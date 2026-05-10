@@ -1,0 +1,29 @@
+{
+  "name": "Jobentra CRM",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "frontend",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-spring-boot",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "ecmel.vscode-html-css"
+      ]
+    }
+  },
+  "forwardPorts": [8080, 3000, 8000, 5432],
+  "portsAttributes": {
+    "8080": { "label": "Backend API (Spring Boot)" },
+    "3000": { "label": "Frontend (Next.js)" },
+    "8000": { "label": "AI Service (FastAPI)" },
+    "5432": { "label": "PostgreSQL" }
+  },
+  "remoteUser": "node"
+}

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: crm-postgres
+    environment:
+      POSTGRES_DB: jobentra_crm
+      POSTGRES_USER: crmuser
+      POSTGRES_PASSWORD: crmpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - jobentra-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crmuser -d jobentra_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crm-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobentra_crm
+      SPRING_DATASOURCE_USERNAME: crmuser
+      SPRING_DATASOURCE_PASSWORD: crmpass
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_API_KEY: dev-secret-key
+    ports:
+      - "8080:8080"
+    networks:
+      - jobentra-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: crm-ai-service
+    environment:
+      AI_SERVICE_API_KEY: dev-secret-key
+      ALLOWED_ORIGINS: http://backend:8080,http://localhost:8080
+    ports:
+      - "8000:8000"
+    networks:
+      - jobentra-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: crm-frontend
+    environment:
+      BACKEND_URL: http://backend:8080
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - /app/node_modules
+    networks:
+      - jobentra-network
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  jobentra-network:
+    driver: bridge

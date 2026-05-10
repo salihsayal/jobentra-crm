@@ -1,0 +1,47 @@
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Environment ---
+.env
+.env.local
+.env.*.local
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Java / Spring Boot ---
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+*.war
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Next.js ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python / FastAPI ---
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+ai-service/*.pyc
+ai-service/.venv/
+ai-service/venv/
+*.egg-info/
+
+# --- Logs ---
+*.log
+logs/
