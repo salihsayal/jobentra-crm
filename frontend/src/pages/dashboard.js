@@ -159,7 +159,13 @@ export default function Dashboard({ initialMembers, error }) {
                         {m.status}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-sm whitespace-nowrap">
+                      <button
+                        onClick={() => router.push(`/members/${m.id}`)}
+                        className="text-gray-600 hover:text-gray-800 mr-3"
+                      >
+                        View
+                      </button>
                       <button
                         onClick={() => openEdit(m)}
                         className="text-blue-600 hover:text-blue-800 mr-3"
