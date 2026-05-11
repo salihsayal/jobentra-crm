@@ -3,6 +3,7 @@ package com.jobentra.crm.controller;
 import com.jobentra.crm.dto.CreateMemberRequest;
 import com.jobentra.crm.dto.UpdateMemberRequest;
 import com.jobentra.crm.model.Member;
+import com.jobentra.crm.service.AiServiceClient;
 import com.jobentra.crm.service.MemberService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,9 +21,11 @@ import java.util.UUID;
 public class MemberController {
 
     private final MemberService memberService;
+    private final AiServiceClient aiServiceClient;
 
-    public MemberController(MemberService memberService) {
+    public MemberController(MemberService memberService, AiServiceClient aiServiceClient) {
         this.memberService = memberService;
+        this.aiServiceClient = aiServiceClient;
     }
 
     @GetMapping("/export")
@@ -90,6 +94,27 @@ public class MemberController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/{memberId}/generate-profile")
+    public ResponseEntity<?> generateProfile(@PathVariable UUID memberId) {
+        var member = memberService.getMemberById(memberId);
+        if (member.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Member m = member.get();
+
+        Map<String, Object> memberData = new LinkedHashMap<>();
+        memberData.put("memberId", m.getId().toString());
+        memberData.put("firstName", m.getFirstName());
+        memberData.put("lastName", m.getLastName());
+        memberData.put("email", m.getEmail());
+        memberData.put("phone", m.getPhone() != null ? m.getPhone() : "");
+        memberData.put("status", m.getStatus());
+        memberData.put("notes", m.getNotes() != null ? m.getNotes() : "");
+
+        Map<String, Object> result = aiServiceClient.generateProfilePdf(memberData);
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

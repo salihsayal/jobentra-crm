@@ -1,11 +1,18 @@
-from fastapi import FastAPI, Header, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import logging
 import os
 
-app = FastAPI(title="Jobentra AI Service")
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://backend:8080,http://localhost:8080").split(",")
-API_KEY = os.getenv("AI_SERVICE_API_KEY", "dev-secret-key")
+from app.config import ALLOWED_ORIGINS, GENERATED_DIR
+from app.routes.health import router as health_router
+from app.routes.pdf import router as pdf_router
+
+logging.basicConfig(level=logging.INFO)
+os.makedirs(GENERATED_DIR, exist_ok=True)
+
+app = FastAPI(title="Jobentra AI Service")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,18 +22,7 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+app.mount("/generated", StaticFiles(directory=GENERATED_DIR), name="generated")
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.post("/generate-pdf")
-def generate_pdf(x_api_key: str = Header(None)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden: invalid API key")
-    return {
-        "pdf_url": "https://storage.example.com/generated/report-2025.pdf",
-        "status": "generated",
-        "message": "PDF report generated successfully",
-    }
+app.include_router(health_router)
+app.include_router(pdf_router)

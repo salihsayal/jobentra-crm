@@ -4,6 +4,7 @@ import com.jobentra.crm.config.JwtUtil;
 import com.jobentra.crm.dto.LoginRequest;
 import com.jobentra.crm.dto.LoginResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +21,20 @@ public class AuthController {
 
     private final JwtUtil jwtUtil;
 
+    @Value("${demo.email}")
+    private String demoEmail;
+
+    @Value("${demo.password}")
+    private String demoPassword;
+
     public AuthController(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        if ("admin@jobentra.com".equals(request.getEmail()) &&
-            "admin123".equals(request.getPassword())) {
+        if (demoEmail.equals(request.getEmail()) &&
+            demoPassword.equals(request.getPassword())) {
 
             String token = jwtUtil.generateToken(request.getEmail(), "ADMIN");
 

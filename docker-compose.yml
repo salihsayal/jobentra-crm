@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: crm-postgres
     environment:
-      POSTGRES_DB: jobentra_crm
-      POSTGRES_USER: crmuser
-      POSTGRES_PASSWORD: crmpass
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -13,7 +13,7 @@ services:
     networks:
       - jobentra-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crmuser -d jobentra_crm"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,11 +24,13 @@ services:
       dockerfile: Dockerfile
     container_name: crm-backend
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobentra_crm
-      SPRING_DATASOURCE_USERNAME: crmuser
-      SPRING_DATASOURCE_PASSWORD: crmpass
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       AI_SERVICE_URL: http://ai-service:8000
-      AI_SERVICE_API_KEY: dev-secret-key
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
+      DEMO_EMAIL: ${DEMO_EMAIL}
+      DEMO_PASSWORD: ${DEMO_PASSWORD}
     ports:
       - "8080:8080"
     networks:
@@ -43,7 +45,8 @@ services:
       dockerfile: Dockerfile
     container_name: crm-ai-service
     environment:
-      AI_SERVICE_API_KEY: dev-secret-key
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
+      AI_SERVICE_PUBLIC_URL: ${AI_SERVICE_PUBLIC_URL}
       ALLOWED_ORIGINS: http://backend:8080,http://localhost:8080
     ports:
       - "8000:8000"
@@ -57,7 +60,6 @@ services:
     container_name: crm-frontend
     environment:
       BACKEND_URL: http://backend:8080
-      NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
       - "3000:3000"
     volumes:

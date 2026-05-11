@@ -22,6 +22,9 @@ export default function MemberDetail({ member, activities, error }) {
   const [content, setContent] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfError, setPdfError] = useState('');
 
   if (error) {
     return (
@@ -37,6 +40,23 @@ export default function MemberDetail({ member, activities, error }) {
         </div>
       </div>
     );
+  }
+
+  async function handleGeneratePdf() {
+    setPdfError('');
+    setPdfUrl(null);
+    setGenerating(true);
+    const res = await fetch(`/api/members/${member.id}/generate-profile`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPdfUrl(data.pdf_url);
+    } else {
+      setPdfError('Failed to generate PDF');
+    }
+    setGenerating(false);
   }
 
   async function handleAdd(e) {
@@ -106,6 +126,29 @@ export default function MemberDetail({ member, activities, error }) {
                   <span className="text-gray-500">Notes</span>
                   <p className="text-gray-800">{member.notes || 'None'}</p>
                 </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t">
+                <button
+                  onClick={handleGeneratePdf}
+                  disabled={generating}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {generating ? 'Generating...' : 'Generate Profile PDF'}
+                </button>
+                {pdfError && (
+                  <p className="text-red-600 text-xs mt-2">{pdfError}</p>
+                )}
+                {pdfUrl && (
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-blue-600 text-xs mt-2 hover:underline break-all"
+                  >
+                    Open generated PDF &rarr;
+                  </a>
+                )}
               </div>
             </div>
           </div>
