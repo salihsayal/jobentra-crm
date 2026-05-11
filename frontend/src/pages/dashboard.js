@@ -1,7 +1,98 @@
 import { useRouter } from 'next/router';
+import { useState } from 'react';
 
-export default function Dashboard({ customers, error }) {
+const STATUS_COLORS = {
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-600',
+  lead: 'bg-blue-100 text-blue-800',
+};
+
+export default function Dashboard({ initialMembers, error }) {
   const router = useRouter();
+  const [members, setMembers] = useState(initialMembers?.content || []);
+  const [page, setPage] = useState(initialMembers?.number || 0);
+  const [totalPages, setTotalPages] = useState(initialMembers?.totalPages || 0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editMember, setEditMember] = useState(null);
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', email: '', phone: '', status: 'active', notes: '',
+  });
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function fetchPage(pageNum) {
+    const res = await fetch(`/api/members?page=${pageNum}&size=10&sort=lastName`, {
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setMembers(data.content);
+      setPage(data.number);
+      setTotalPages(data.totalPages);
+    }
+  }
+
+  function openCreate() {
+    setEditMember(null);
+    setForm({ firstName: '', lastName: '', email: '', phone: '', status: 'active', notes: '' });
+    setFormError('');
+    setModalOpen(true);
+  }
+
+  function openEdit(member) {
+    setEditMember(member);
+    setForm({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      email: member.email,
+      phone: member.phone || '',
+      status: member.status,
+      notes: member.notes || '',
+    });
+    setFormError('');
+    setModalOpen(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setFormError('');
+    setSaving(true);
+
+    const url = editMember ? `/api/members/${editMember.id}` : '/api/members';
+    const method = editMember ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+      credentials: 'include',
+    });
+
+    if (res.ok) {
+      setModalOpen(false);
+      fetchPage(page);
+    } else {
+      const data = await res.json();
+      setFormError(data.error || 'An error occurred');
+    }
+    setSaving(false);
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this member?')) return;
+    const res = await fetch(`/api/members/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      fetchPage(page);
+    } else if (res.status === 403) {
+      alert('Only admins can delete members.');
+    }
+  }
+
+  function updateField(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
 
   if (error) {
     return (
@@ -22,14 +113,22 @@ export default function Dashboard({ customers, error }) {
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Jobentra CRM</h1>
-          <span className="text-sm text-gray-500">Dashboard</span>
+          <span className="text-sm text-gray-500">Member Management</span>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        <h2 className="text-2xl font-semibold mb-6">Customers</h2>
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold">Members</h2>
+          <button
+            onClick={openCreate}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+          >
+            + New Member
+          </button>
+        </div>
 
         <div className="bg-white rounded shadow overflow-hidden">
           <table className="w-full">
@@ -37,23 +136,189 @@ export default function Dashboard({ customers, error }) {
               <tr className="bg-gray-50 border-b">
                 <th className="p-3 text-left text-sm font-medium text-gray-600">Name</th>
                 <th className="p-3 text-left text-sm font-medium text-gray-600">Email</th>
-                <th className="p-3 text-left text-sm font-medium text-gray-600">Company</th>
                 <th className="p-3 text-left text-sm font-medium text-gray-600">Phone</th>
+                <th className="p-3 text-left text-sm font-medium text-gray-600">Status</th>
+                <th className="p-3 text-left text-sm font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((customer) => (
-                <tr key={customer.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 text-sm">{customer.name}</td>
-                  <td className="p-3 text-sm">{customer.email}</td>
-                  <td className="p-3 text-sm">{customer.company}</td>
-                  <td className="p-3 text-sm text-gray-500">{customer.phone}</td>
+              {members.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-gray-400">
+                    No members found.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                members.map((m) => (
+                  <tr key={m.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 text-sm">{m.firstName} {m.lastName}</td>
+                    <td className="p-3 text-sm">{m.email}</td>
+                    <td className="p-3 text-sm text-gray-500">{m.phone || '-'}</td>
+                    <td className="p-3">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[m.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {m.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-sm">
+                      <button
+                        onClick={() => openEdit(m)}
+                        className="text-blue-600 hover:text-blue-800 mr-3"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-4">
+            <button
+              onClick={() => fetchPage(0)}
+              disabled={page === 0}
+              className="px-3 py-1 rounded border text-sm disabled:opacity-30"
+            >
+              First
+            </button>
+            <button
+              onClick={() => fetchPage(page - 1)}
+              disabled={page === 0}
+              className="px-3 py-1 rounded border text-sm disabled:opacity-30"
+            >
+              Prev
+            </button>
+            <span className="text-sm text-gray-600 px-3">
+              Page {page + 1} of {totalPages}
+            </span>
+            <button
+              onClick={() => fetchPage(page + 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1 rounded border text-sm disabled:opacity-30"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => fetchPage(totalPages - 1)}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1 rounded border text-sm disabled:opacity-30"
+            >
+              Last
+            </button>
+          </div>
+        )}
       </main>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              {editMember ? 'Edit Member' : 'New Member'}
+            </h3>
+
+            {formError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4 text-sm">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={form.firstName}
+                    onChange={(e) => updateField('firstName', e.target.value)}
+                    className="w-full p-2 border rounded text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={form.lastName}
+                    onChange={(e) => updateField('lastName', e.target.value)}
+                    className="w-full p-2 border rounded text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  className="w-full p-2 border rounded text-sm"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => updateField('phone', e.target.value)}
+                    className="w-full p-2 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => updateField('status', e.target.value)}
+                    className="w-full p-2 border rounded text-sm"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="lead">Lead</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => updateField('notes', e.target.value)}
+                  className="w-full p-2 border rounded text-sm"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 border rounded text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : editMember ? 'Update' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -61,27 +326,25 @@ export default function Dashboard({ customers, error }) {
 export async function getServerSideProps({ req }) {
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://backend:8080';
-    const res = await fetch(`${backendUrl}/api/customers`, {
-      headers: {
-        Cookie: req.headers.cookie || '',
-      },
+    const res = await fetch(`${backendUrl}/api/members?page=0&size=10&sort=lastName`, {
+      headers: { Cookie: req.headers.cookie || '' },
     });
 
     if (!res.ok) {
       return {
         props: {
-          customers: [],
+          initialMembers: null,
           error: 'Please log in to access the dashboard.',
         },
       };
     }
 
-    const customers = await res.json();
-    return { props: { customers, error: null } };
+    const initialMembers = await res.json();
+    return { props: { initialMembers, error: null } };
   } catch (err) {
     return {
       props: {
-        customers: [],
+        initialMembers: null,
         error: 'Cannot connect to backend. Is it running?',
       },
     };

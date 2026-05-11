@@ -29,7 +29,7 @@ public class AuthController {
         if ("admin@jobentra.com".equals(request.getEmail()) &&
             "admin123".equals(request.getPassword())) {
 
-            String token = jwtUtil.generateToken(request.getEmail());
+            String token = jwtUtil.generateToken(request.getEmail(), "ADMIN");
 
             ResponseCookie cookie = ResponseCookie.from("token", token)
                     .httpOnly(true)
