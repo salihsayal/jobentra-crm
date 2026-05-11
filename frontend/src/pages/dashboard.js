@@ -146,6 +146,26 @@ export default function Dashboard({ initialMembers, error }) {
     }
   }
 
+  async function handleExport() {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (statusFilter) params.set('status', statusFilter);
+    const res = await fetch('/api/members/export?' + params.toString(), {
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'members.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+  }
+
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -246,6 +266,12 @@ export default function Dashboard({ initialMembers, error }) {
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
             >
               + New Member
+            </button>
+            <button
+              onClick={handleExport}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 text-sm font-medium whitespace-nowrap border"
+            >
+              Export CSV
             </button>
           </div>
         </div>

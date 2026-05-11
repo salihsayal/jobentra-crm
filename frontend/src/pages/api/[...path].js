@@ -32,6 +32,15 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', setCookie);
     }
 
+    const contentType = backendResponse.headers.get('content-type');
+
+    if (contentType && contentType.includes('text/csv')) {
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', backendResponse.headers.get('content-disposition'));
+      const text = await backendResponse.text();
+      return res.status(backendResponse.status).send(text);
+    }
+
     const text = await backendResponse.text();
     if (backendResponse.status === 204) {
       return res.status(204).end();

@@ -7,6 +7,7 @@ import com.jobentra.crm.service.MemberService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,27 @@ public class MemberController {
 
     public MemberController(MemberService memberService) {
         this.memberService = memberService;
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<String> exportCsv(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
+        Page<Member> page = memberService.searchMembers(search, status, Pageable.unpaged());
+        StringBuilder csv = new StringBuilder();
+        csv.append("firstName,lastName,email,phone,status,createdAt\n");
+        for (Member m : page.getContent()) {
+            csv.append(escapeCsv(m.getFirstName())).append(",");
+            csv.append(escapeCsv(m.getLastName())).append(",");
+            csv.append(escapeCsv(m.getEmail())).append(",");
+            csv.append(escapeCsv(m.getPhone() != null ? m.getPhone() : "")).append(",");
+            csv.append(m.getStatus()).append(",");
+            csv.append(m.getCreatedAt()).append("\n");
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .header("Content-Disposition", "attachment; filename=members.csv")
+                .body(csv.toString());
     }
 
     @GetMapping
@@ -74,5 +96,13 @@ public class MemberController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         memberService.deleteMember(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }
