@@ -24,8 +24,11 @@ public class MemberController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Member>> getAll(Pageable pageable) {
-        return ResponseEntity.ok(memberService.getAllMembers(pageable));
+    public ResponseEntity<Page<Member>> getAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ResponseEntity.ok(memberService.searchMembers(search, status, pageable));
     }
 
     @GetMapping("/{id}")

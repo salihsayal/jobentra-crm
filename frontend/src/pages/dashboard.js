@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 const STATUS_COLORS = {
   active: 'bg-green-100 text-green-800',
@@ -19,17 +19,42 @@ export default function Dashboard({ initialMembers, error }) {
   });
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const debounceRef = useRef(null);
 
-  async function fetchPage(pageNum) {
-    const res = await fetch(`/api/members?page=${pageNum}&size=10&sort=lastName`, {
-      credentials: 'include',
-    });
+  const buildUrl = useCallback((pageNum, s, st) => {
+    const params = new URLSearchParams();
+    params.set('page', pageNum);
+    params.set('size', '10');
+    params.set('sort', 'lastName');
+    if (s) params.set('search', s);
+    if (st) params.set('status', st);
+    return '/api/members?' + params.toString();
+  }, []);
+
+  async function fetchPage(pageNum, s = search, st = statusFilter) {
+    const url = buildUrl(pageNum, s, st);
+    const res = await fetch(url, { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       setMembers(data.content);
       setPage(data.number);
       setTotalPages(data.totalPages);
     }
+  }
+
+  function handleSearchChange(value) {
+    setSearch(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchPage(0, value, statusFilter);
+    }, 300);
+  }
+
+  function handleStatusChange(value) {
+    setStatusFilter(value);
+    fetchPage(0, search, value);
   }
 
   function openCreate() {
@@ -120,14 +145,33 @@ export default function Dashboard({ initialMembers, error }) {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-2xl font-semibold">Members</h2>
-          <button
-            onClick={openCreate}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium"
-          >
-            + New Member
-          </button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Search name or email..."
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="flex-1 sm:w-64 p-2 border rounded text-sm"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="p-2 border rounded text-sm"
+            >
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="lead">Lead</option>
+            </select>
+            <button
+              onClick={openCreate}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
+            >
+              + New Member
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded shadow overflow-hidden">
@@ -145,7 +189,7 @@ export default function Dashboard({ initialMembers, error }) {
               {members.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-gray-400">
-                    No members found.
+                    {search || statusFilter ? 'No members match your filters.' : 'No members found.'}
                   </td>
                 </tr>
               ) : (

@@ -18,8 +18,8 @@ public class MemberService {
         this.memberRepository = memberRepository;
     }
 
-    public Page<Member> getAllMembers(Pageable pageable) {
-        return memberRepository.findAll(pageable);
+    public Page<Member> searchMembers(String search, String status, Pageable pageable) {
+        return memberRepository.searchMembers(search, status, pageable);
     }
 
     public Optional<Member> getMemberById(UUID id) {
