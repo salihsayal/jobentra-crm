@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,10 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
     Optional<Member> findByEmail(String email);
 
     Page<Member> findByStatus(String status, Pageable pageable);
+
+    long countByStatus(String status);
+
+    long countByCreatedAtAfter(LocalDateTime since);
 
     @Query("SELECT m FROM Member m WHERE " +
            "(:search IS NULL OR :search = '' OR " +

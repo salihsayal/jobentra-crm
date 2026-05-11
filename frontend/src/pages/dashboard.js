@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const STATUS_COLORS = {
   active: 'bg-green-100 text-green-800',
@@ -21,7 +21,38 @@ export default function Dashboard({ initialMembers, error }) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [stats, setStats] = useState(null);
+  const [recentMembers, setRecentMembers] = useState([]);
   const debounceRef = useRef(null);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [countRes, recentRes, actRes, recentMemsRes] = await Promise.all([
+          fetch('/api/stats/members/count', { credentials: 'include' }),
+          fetch('/api/stats/members/recent?days=7', { credentials: 'include' }),
+          fetch('/api/stats/activities/recent?days=7', { credentials: 'include' }),
+          fetch('/api/members?sort=createdAt,desc&size=5', { credentials: 'include' }),
+        ]);
+        const counts = countRes.ok ? await countRes.json() : {};
+        const recent = recentRes.ok ? await recentRes.json() : {};
+        const actRecent = actRes.ok ? await actRes.json() : {};
+        const recentMems = recentMemsRes.ok ? await recentMemsRes.json() : {};
+        setStats({
+          total: counts.total || 0,
+          active: counts.active || 0,
+          inactive: counts.inactive || 0,
+          lead: counts.lead || 0,
+          membersRecent: recent.count || 0,
+          activitiesRecent: actRecent.count || 0,
+        });
+        setRecentMembers(recentMems.content || []);
+      } catch (e) {
+        // stats fetch failed, continue without stats
+      }
+    }
+    loadStats();
+  }, []);
 
   const buildUrl = useCallback((pageNum, s, st) => {
     const params = new URLSearchParams();
@@ -145,6 +176,51 @@ export default function Dashboard({ initialMembers, error }) {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded shadow p-4">
+              <p className="text-xs text-gray-500 uppercase">Total Members</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+            </div>
+            <div className="bg-white rounded shadow p-4">
+              <p className="text-xs text-gray-500 uppercase">Active</p>
+              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+            </div>
+            <div className="bg-white rounded shadow p-4">
+              <p className="text-xs text-gray-500 uppercase">New Members (7d)</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.membersRecent}</p>
+            </div>
+            <div className="bg-white rounded shadow p-4">
+              <p className="text-xs text-gray-500 uppercase">Activities (7d)</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.activitiesRecent}</p>
+            </div>
+          </div>
+        )}
+
+        {recentMembers.length > 0 && (
+          <div className="bg-white rounded shadow p-4 mb-8">
+            <p className="text-xs text-gray-500 uppercase mb-3">Recent Members</p>
+            <div className="space-y-2">
+              {recentMembers.map((m) => (
+                <div key={m.id} className="flex items-center justify-between text-sm">
+                  <div>
+                    <button
+                      onClick={() => router.push(`/members/${m.id}`)}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {m.firstName} {m.lastName}
+                    </button>
+                    <span className="text-gray-400 ml-2">{m.email}</span>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[m.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {m.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h2 className="text-2xl font-semibold">Members</h2>
           <div className="flex gap-3 w-full sm:w-auto">
