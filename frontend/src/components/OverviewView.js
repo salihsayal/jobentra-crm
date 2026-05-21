@@ -1,5 +1,8 @@
+import { useState, useReducer } from 'react';
+import { Plus } from 'lucide-react';
 import StatsCharts from './StatsCharts';
 import DataTable from './DataTable';
+import CreateSlideOver from './CreateSlideOver';
 import {
   mockCustomers, mockCandidates, mockJobs, mockBillings,
 } from '@/utils/mockData';
@@ -176,6 +179,31 @@ function StatCard({ label, value, color }) {
 
 export default function OverviewView({ view, onRowClick }) {
   const config = VIEW_CONFIG[view];
+  const [slideOverOpen, setSlideOverOpen] = useState(false);
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+
+  const LABELS = {
+    customers: { title: 'Kunden', article: 'Neuen' },
+    candidates: { title: 'Kandidaten', article: 'Neuen' },
+    jobs: { title: 'Job', article: 'Neuen' },
+    billings: { title: 'Rechnung', article: 'Neue' },
+  };
+
+  function handleCreate(newEntity) {
+    const map = {
+      candidates: mockCandidates,
+      customers: mockCustomers,
+      jobs: mockJobs,
+      billings: mockBillings,
+    };
+    const arr = map[view];
+    if (arr) {
+      arr.push(newEntity);
+      forceUpdate();
+      setSlideOverOpen(false);
+    }
+  }
+
   if (!config) return null;
 
   if (view === 'dashboard') {
@@ -225,6 +253,17 @@ export default function OverviewView({ view, onRowClick }) {
     <div>
       <StatsCharts pieData={pieData} barData={barData} />
       <div style={{ marginTop: 24 }}>
+        {view !== 'dashboard' && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button
+              onClick={() => setSlideOverOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+            >
+              <Plus size={16} />
+              + {LABELS[view]?.article} {LABELS[view]?.title} anlegen
+            </button>
+          </div>
+        )}
         <Card>
           <DataTable
             data={config.data || []}
@@ -234,6 +273,13 @@ export default function OverviewView({ view, onRowClick }) {
           />
         </Card>
       </div>
+
+      <CreateSlideOver
+        entityType={view}
+        open={slideOverOpen}
+        onClose={() => setSlideOverOpen(false)}
+        onSave={handleCreate}
+      />
     </div>
   );
 }

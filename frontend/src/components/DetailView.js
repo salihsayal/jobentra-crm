@@ -44,7 +44,8 @@ function formatValue(key, value) {
 
 function parseValue(key, value, entityType) {
   if (key === 'skills' && entityType === 'candidate') {
-    return value.split(',').map(s => s.trim()).filter(Boolean);
+    if (Array.isArray(value)) return value;
+    return String(value ?? '').split(',').map(s => s.trim()).filter(Boolean);
   }
   if (key === 'amount' && entityType === 'billing') {
     return parseFloat(value) || 0;
@@ -74,17 +75,43 @@ export default function DetailView({ entity, entityType, onBack }) {
   const [hoveredField, setHoveredField] = useState(null);
 
   const editableKeys = EDITABLE_FIELDS[entityType] || [];
+
+  function normalizeForCompare(val, key) {
+    if (key === 'skills' && entityType === 'candidate') {
+      return Array.isArray(val) ? val.join(', ') : String(val ?? '');
+    }
+    return String(val ?? '');
+  }
+
   const isDirty = useMemo(() => {
     return editableKeys.some(key => {
-      const a = key === 'skills' && entityType === 'candidate'
-        ? (formData[key] || []).join(', ')
-        : String(formData[key] ?? '');
-      const b = key === 'skills' && entityType === 'candidate'
-        ? (originalData.current[key] || []).join(', ')
-        : String(originalData.current[key] ?? '');
+      const a = normalizeForCompare(formData[key], key);
+      const b = normalizeForCompare(originalData.current[key], key);
       return a !== b;
     });
   }, [formData, entityType, editableKeys]);
+
+  const [validationErrors, setValidationErrors] = useState({});
+
+  function validateField(key, value) {
+    const str = String(value ?? '').trim();
+    if (!str) {
+      setValidationErrors(prev => ({ ...prev, [key]: null }));
+      return true;
+    }
+    if (key === 'email') {
+      const valid = str.includes('@') && str.lastIndexOf('.') > str.indexOf('@');
+      setValidationErrors(prev => ({ ...prev, [key]: valid ? null : 'Ung\u00fcltige E-Mail-Adresse' }));
+      return valid;
+    }
+    if (key === 'phone') {
+      const valid = !/[^0-9+\-() ]/.test(str);
+      setValidationErrors(prev => ({ ...prev, [key]: valid ? null : 'Nur Zahlen und Sonderzeichen erlaubt' }));
+      return valid;
+    }
+    setValidationErrors(prev => ({ ...prev, [key]: null }));
+    return true;
+  }
 
   const fields = Object.entries(entity).filter(([key]) =>
     key !== 'id' && FIELD_LABELS[key]
@@ -102,14 +129,19 @@ export default function DetailView({ entity, entityType, onBack }) {
 
   function handleChange(key, value) {
     setFormData(prev => ({ ...prev, [key]: value }));
+    validateField(key, value);
   }
 
   function handleSave() {
+    const hasErrors = Object.values(validationErrors).some(Boolean);
+    if (hasErrors) return;
+
     editableKeys.forEach(key => {
       entity[key] = parseValue(key, formData[key], entityType);
     });
     originalData.current = { ...entity };
     setFormData({ ...entity });
+    setValidationErrors({});
   }
 
   function handleCancel() {
@@ -185,70 +217,78 @@ export default function DetailView({ entity, entityType, onBack }) {
             const display = formatValue(key, value);
             const editable = editableKeys.includes(key);
 
+            const err = validationErrors[key];
+
             return (
               <div
                 key={key}
                 style={{
                   padding: '10px 0', borderBottom: '1px solid var(--border)',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}
                 onMouseEnter={() => setHoveredField(key)}
                 onMouseLeave={() => setHoveredField(null)}
               >
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', minWidth: 100 }}>
-                  {FIELD_LABELS[key]}
-                </span>
-
-                {!editable ? (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>
-                    {display || '-'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', minWidth: 100 }}>
+                    {FIELD_LABELS[key]}
                   </span>
-                ) : statusOpts.length > 0 && key === 'status' ? (
-                  <select
-                    value={formData[key] || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    style={{
-                      ...inputBaseStyle,
-                      cursor: 'pointer',
-                      background: 'var(--bg-input)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      border: '1px solid var(--border)',
-                      maxWidth: 160,
-                    }}
-                  >
-                    {statusOpts.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                ) : key === 'amount' ? (
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData[key] ?? ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    onFocus={() => setFocusedField(key)}
-                    onBlur={() => setFocusedField(null)}
-                    style={inputStyle(key)}
-                  />
-                ) : key === 'dueDate' ? (
-                  <input
-                    type="date"
-                    value={formData[key] ?? ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    onFocus={() => setFocusedField(key)}
-                    onBlur={() => setFocusedField(null)}
-                    style={inputStyle(key)}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={typeof formData[key] === 'string' ? formData[key] : display}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    onFocus={() => setFocusedField(key)}
-                    onBlur={() => setFocusedField(null)}
-                    style={inputStyle(key)}
-                  />
+
+                  {!editable ? (
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>
+                      {display || '-'}
+                    </span>
+                  ) : statusOpts.length > 0 && key === 'status' ? (
+                    <select
+                      value={formData[key] || ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      style={{
+                        ...inputBaseStyle,
+                        cursor: 'pointer',
+                        background: 'var(--bg-input)',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        border: '1px solid var(--border)',
+                        maxWidth: 160,
+                      }}
+                    >
+                      {statusOpts.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : key === 'amount' ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData[key] ?? ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      onFocus={() => setFocusedField(key)}
+                      onBlur={() => setFocusedField(null)}
+                      style={inputStyle(key)}
+                    />
+                  ) : key === 'dueDate' ? (
+                    <input
+                      type="date"
+                      value={formData[key] ?? ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      onFocus={() => setFocusedField(key)}
+                      onBlur={() => setFocusedField(null)}
+                      style={inputStyle(key)}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={typeof formData[key] === 'string' ? formData[key] : display}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      onFocus={() => setFocusedField(key)}
+                      onBlur={() => setFocusedField(null)}
+                      style={inputStyle(key)}
+                    />
+                  )}
+                </div>
+                {err && (
+                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4, textAlign: 'right' }}>
+                    {err}
+                  </div>
                 )}
               </div>
             );
