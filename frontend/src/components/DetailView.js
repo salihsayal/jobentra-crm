@@ -1,4 +1,4 @@
-import { toPairs } from '@/utils/mockData';
+import { ArrowLeft, FileText, ShieldOff } from 'lucide-react';
 
 const FIELD_LABELS = {
   companyName: 'Unternehmen',
@@ -32,63 +32,65 @@ export default function DetailView({ entity, entityType, onBack }) {
     key !== 'id' && FIELD_LABELS[key]
   );
 
+  const actionLabels = {
+    candidate: ['Lebenslauf-Generator', 'CV-Anonymisierer'],
+    customer: ['Unternehmensprofil erstellen', 'Als PDF exportieren'],
+    job: ['Job-Ausschreibung generieren', 'Als PDF exportieren'],
+    billing: ['Rechnung generieren', 'Als PDF exportieren'],
+  };
+  const [label1, label2] = actionLabels[entityType] || actionLabels.candidate;
+
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
         <button
           onClick={onBack}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6, fontSize: 13,
-            background: 'var(--bg-input)', color: 'var(--text-muted)', border: '1px solid var(--border)',
-            cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          className="hover:bg-app-bg-hover hover:text-app-text-main"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover border border-app-border transition-colors"
         >
-          &larr; Zur&uuml;ck
+          <ArrowLeft size={16} />
+          Zur&uuml;ck
         </button>
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, color: 'var(--text-main)' }}>
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--card-border)',
+        borderRadius: 12, padding: 24, marginBottom: 20,
+      }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, color: 'var(--text-main)' }}>
           {entityType === 'candidate'
             ? `${entity.firstName} ${entity.lastName}`
             : entity.companyName || entity.title || entity.invoiceNumber}
         </h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
           {fields.map(([key, value]) => (
-            <div key={key} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{FIELD_LABELS[key]}</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-main)', textAlign: 'right' }}>{formatValue(key, value)}</span>
+            <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>{FIELD_LABELS[key]}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>{formatValue(key, value)}</span>
             </div>
           ))}
           {fields.length % 2 !== 0 && <div />}
         </div>
       </div>
 
-      {(entityType === 'candidate' || entityType === 'customer' || entityType === 'job' || entityType === 'billing') && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-main)', marginBottom: 16 }}>Aktionen</h3>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button
-              style={{
-                padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 500,
-                background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
-              }}
-            >
-              {entityType === 'candidate' ? 'Lebenslauf-Generator' : entityType === 'customer' ? 'Unternehmensprofil erstellen' : entityType === 'job' ? 'Job-Ausschreibung generieren' : 'Rechnung generieren'}
-            </button>
-            <button
-              style={{
-                padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 500,
-                background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)', cursor: 'pointer',
-              }}
-            >
-              {entityType === 'candidate' ? 'CV-Anonymisierer' : 'Als PDF exportieren'}
-            </button>
-          </div>
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--card-border)',
+        borderRadius: 12, padding: 24,
+      }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Aktionen
+        </h3>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+            <FileText size={16} />
+            {label1}
+          </button>
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-app-accent text-app-accent hover:bg-app-accent hover:text-white transition-colors">
+            <ShieldOff size={16} />
+            {label2}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

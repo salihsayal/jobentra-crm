@@ -1,4 +1,4 @@
-import { searchAllEntities, mockCustomers, mockCandidates, mockJobs } from '@/utils/mockData';
+import { Search } from 'lucide-react';
 
 export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSelect }) {
   const hasResults = omniResults &&
@@ -6,22 +6,27 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
 
   return (
     <header style={{ height: 56 }} className="flex items-center px-4 bg-app-bg-topbar border-b border-app-border relative z-30">
-      <div className="text-lg font-bold text-app-accent mr-6 whitespace-nowrap">
-        Jobentra CRM
+      <div className="flex-1 flex justify-start">
+        <div className="text-lg font-bold text-app-accent whitespace-nowrap">
+          Jobentra CRM
+        </div>
       </div>
 
-      <div className="flex-1 max-w-2xl relative">
-        <input
-          type="text"
-          value={omniQuery}
-          onChange={(e) => onOmniChange(e.target.value)}
-          placeholder="Suche über Kunden, Kandidaten, Jobs..."
-          className="w-full px-4 py-1.5 rounded-md text-sm bg-app-bg-input text-app-text-main placeholder:text-app-text-dim border border-app-border focus:outline-none focus:border-app-accent transition-colors"
-        />
+      <div className="w-full max-w-2xl relative">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-app-text-dim pointer-events-none" />
+          <input
+            type="text"
+            value={omniQuery}
+            onChange={(e) => onOmniChange(e.target.value)}
+            placeholder="Suche uber Kunden, Kandidaten, Jobs..."
+            className="w-full pl-9 pr-4 py-1.5 rounded-lg text-sm bg-app-bg-input text-app-text-main placeholder:text-app-text-dim border border-app-border focus:outline-none focus:border-app-accent transition-colors"
+          />
+        </div>
         {hasResults && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-app-bg-card border border-app-border rounded-md shadow-lg max-h-80 overflow-y-auto z-50">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-app-bg-card border border-app-border rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">
             {omniResults.customers.length > 0 && (
-              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider">
+              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider font-semibold">
                 Gefundene Kunden
               </div>
             )}
@@ -36,7 +41,7 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
               </button>
             ))}
             {omniResults.candidates.length > 0 && (
-              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider border-t border-app-border">
+              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider font-semibold border-t border-app-border">
                 Gefundene Kandidaten
               </div>
             )}
@@ -51,7 +56,7 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
               </button>
             ))}
             {omniResults.jobs.length > 0 && (
-              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider border-t border-app-border">
+              <div className="px-3 py-1.5 text-xs text-app-text-dim uppercase tracking-wider font-semibold border-t border-app-border">
                 Gefundene Jobs
               </div>
             )}
@@ -69,8 +74,8 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
         )}
       </div>
 
-      <div className="ml-4 flex items-center gap-2 text-sm text-app-text-muted">
-        <span className="w-7 h-7 rounded-full bg-app-accent flex items-center justify-center text-white text-xs font-medium">
+      <div className="flex-1 flex justify-end items-center gap-2 text-sm text-app-text-muted">
+        <span className="w-7 h-7 rounded-lg bg-app-accent flex items-center justify-center text-white text-xs font-semibold">
           A
         </span>
         <span className="hidden sm:inline">Admin</span>

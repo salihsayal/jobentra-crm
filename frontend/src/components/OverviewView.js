@@ -5,27 +5,27 @@ import {
 } from '@/utils/mockData';
 
 const STATUS_COLORS = {
-  ACTIVE: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-  INACTIVE: { bg: 'rgba(100,116,139,0.15)', text: '#94a3b8' },
-  LEAD: { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6' },
-  NEW: { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6' },
-  IN_PROCESS: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
-  PLACED: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-  REJECTED: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
-  OPEN: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-  CLOSED: { bg: 'rgba(100,116,139,0.15)', text: '#94a3b8' },
-  DRAFT: { bg: 'rgba(139,92,246,0.15)', text: '#8b5cf6' },
-  SENT: { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6' },
-  PAID: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-  CANCELLED: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
+  ACTIVE:    { bg: 'rgba(52,211,153,0.12)', text: '#34d399' },
+  INACTIVE:  { bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' },
+  LEAD:      { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
+  NEW:       { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
+  IN_PROCESS:{ bg: 'rgba(251,191,36,0.12)', text: '#fbbf24' },
+  PLACED:    { bg: 'rgba(52,211,153,0.12)', text: '#34d399' },
+  REJECTED:  { bg: 'rgba(251,113,133,0.12)', text: '#fb7185' },
+  OPEN:      { bg: 'rgba(52,211,153,0.12)', text: '#34d399' },
+  CLOSED:    { bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' },
+  DRAFT:     { bg: 'rgba(167,139,250,0.12)', text: '#a78bfa' },
+  SENT:      { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
+  PAID:      { bg: 'rgba(52,211,153,0.12)', text: '#34d399' },
+  CANCELLED: { bg: 'rgba(251,113,133,0.12)', text: '#fb7185' },
 };
 
 function StatusBadge({ status }) {
-  const s = STATUS_COLORS[status] || { bg: 'rgba(100,116,139,0.15)', text: '#94a3b8' };
+  const s = STATUS_COLORS[status] || { bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' };
   return (
     <span style={{
-      display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500,
-      background: s.bg, color: s.text,
+      display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+      background: s.bg, color: s.text, letterSpacing: '0.02em',
     }}>
       {status}
     </span>
@@ -137,6 +137,43 @@ const VIEW_CONFIG = {
   },
 };
 
+function Card({ children, style }) {
+  return (
+    <div style={{
+      background: 'var(--bg-card)',
+      border: '1px solid var(--card-border)',
+      borderRadius: 12,
+      padding: 20,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, color }) {
+  return (
+    <div style={{
+      position: 'relative', overflow: 'hidden',
+      background: 'var(--bg-card)',
+      border: '1px solid var(--card-border)',
+      borderRadius: 12,
+      padding: 20,
+    }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
+        background: color,
+      }} />
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-main)' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function OverviewView({ view, onRowClick }) {
   const config = VIEW_CONFIG[view];
   if (!config) return null;
@@ -168,10 +205,7 @@ export default function OverviewView({ view, onRowClick }) {
       <div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {cards.map(card => (
-            <div key={card.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{card.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-main)' }}>{card.value}</div>
-            </div>
+            <StatCard key={card.label} label={card.label} value={card.value} color={card.color} />
           ))}
         </div>
         <StatsCharts
@@ -191,12 +225,14 @@ export default function OverviewView({ view, onRowClick }) {
     <div>
       <StatsCharts pieData={pieData} barData={barData} />
       <div style={{ marginTop: 24 }}>
-        <DataTable
-          data={config.data || []}
-          columns={config.tableColumns || []}
-          searchPlaceholder={`${config.title} durchsuchen...`}
-          onRowClick={onRowClick}
-        />
+        <Card>
+          <DataTable
+            data={config.data || []}
+            columns={config.tableColumns || []}
+            searchPlaceholder={`${config.title} durchsuchen...`}
+            onRowClick={onRowClick}
+          />
+        </Card>
       </div>
     </div>
   );
