@@ -2,8 +2,9 @@ package com.jobentra.crm.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
-public class CreateMemberRequest {
+public class CreateCandidateRequest {
 
     @NotBlank
     private String firstName;
@@ -17,7 +18,7 @@ public class CreateMemberRequest {
 
     private String phone;
     private String status;
-    private String notes;
+    private List<String> skills;
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -34,6 +35,6 @@ public class CreateMemberRequest {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public List<String> getSkills() { return skills; }
+    public void setSkills(List<String> skills) { this.skills = skills; }
 }

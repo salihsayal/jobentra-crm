@@ -1,12 +1,14 @@
 package com.jobentra.crm.model;
 
+import com.jobentra.crm.model.enums.CandidateStatus;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "members")
-public class Member {
+@Table(name = "candidates")
+public class Candidate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -23,11 +25,14 @@ public class Member {
 
     private String phone;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status = "active";
+    private CandidateStatus status = CandidateStatus.NEW;
 
-    @Column(columnDefinition = "TEXT")
-    private String notes;
+    @ElementCollection
+    @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_id"))
+    @Column(name = "skill")
+    private List<String> skills;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,7 +51,7 @@ public class Member {
         updatedAt = LocalDateTime.now();
     }
 
-    public Member() {}
+    public Candidate() {}
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -63,11 +68,11 @@ public class Member {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public CandidateStatus getStatus() { return status; }
+    public void setStatus(CandidateStatus status) { this.status = status; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public List<String> getSkills() { return skills; }
+    public void setSkills(List<String> skills) { this.skills = skills; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

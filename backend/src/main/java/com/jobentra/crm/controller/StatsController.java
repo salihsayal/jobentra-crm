@@ -1,52 +1,46 @@
 package com.jobentra.crm.controller;
 
-import com.jobentra.crm.repository.ActivityRepository;
-import com.jobentra.crm.repository.MemberRepository;
+import com.jobentra.crm.repository.BillingRepository;
+import com.jobentra.crm.repository.CandidateRepository;
+import com.jobentra.crm.repository.CustomerRepository;
+import com.jobentra.crm.repository.JobRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/stats")
 public class StatsController {
 
-    private final MemberRepository memberRepository;
-    private final ActivityRepository activityRepository;
+    private final CustomerRepository customerRepository;
+    private final CandidateRepository candidateRepository;
+    private final JobRepository jobRepository;
+    private final BillingRepository billingRepository;
 
-    public StatsController(MemberRepository memberRepository, ActivityRepository activityRepository) {
-        this.memberRepository = memberRepository;
-        this.activityRepository = activityRepository;
+    public StatsController(CustomerRepository customerRepository,
+                           CandidateRepository candidateRepository,
+                           JobRepository jobRepository,
+                           BillingRepository billingRepository) {
+        this.customerRepository = customerRepository;
+        this.candidateRepository = candidateRepository;
+        this.jobRepository = jobRepository;
+        this.billingRepository = billingRepository;
     }
 
-    @GetMapping("/members/count")
-    public ResponseEntity<Map<String, Long>> memberCounts() {
-        long total = memberRepository.count();
-        long active = memberRepository.countByStatus("active");
-        long inactive = memberRepository.countByStatus("inactive");
-        long lead = memberRepository.countByStatus("lead");
+    @GetMapping("/overview")
+    public ResponseEntity<Map<String, Long>> overview() {
+        long totalCustomers = customerRepository.count();
+        long totalCandidates = candidateRepository.count();
+        long openJobs = jobRepository.count();
+        long totalBillings = billingRepository.count();
         return ResponseEntity.ok(Map.of(
-                "total", total,
-                "active", active,
-                "inactive", inactive,
-                "lead", lead
+                "totalCustomers", totalCustomers,
+                "totalCandidates", totalCandidates,
+                "openJobs", openJobs,
+                "totalBillings", totalBillings
         ));
-    }
-
-    @GetMapping("/members/recent")
-    public ResponseEntity<Map<String, Object>> recentMembers(
-            @RequestParam(defaultValue = "7") int days) {
-        LocalDateTime since = LocalDateTime.now().minusDays(days);
-        long count = memberRepository.countByCreatedAtAfter(since);
-        return ResponseEntity.ok(Map.of("count", count, "days", days));
-    }
-
-    @GetMapping("/activities/recent")
-    public ResponseEntity<Map<String, Object>> recentActivities(
-            @RequestParam(defaultValue = "7") int days) {
-        LocalDateTime since = LocalDateTime.now().minusDays(days);
-        long count = activityRepository.countByCreatedAtAfter(since);
-        return ResponseEntity.ok(Map.of("count", count, "days", days));
     }
 }
