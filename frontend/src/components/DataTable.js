@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 
-export default function DataTable({ data, columns, searchPlaceholder, onRowClick }) {
+export default function DataTable({ data, columns, searchPlaceholder, onRowClick, headerRight }) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -37,18 +37,19 @@ export default function DataTable({ data, columns, searchPlaceholder, onRowClick
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 }}>
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={searchPlaceholder || 'Tabelle durchsuchen...'}
           style={{
-            width: '100%', maxWidth: 360, padding: '8px 14px', borderRadius: 10, fontSize: 13,
+            flex: 1, maxWidth: 360, padding: '8px 14px', borderRadius: 10, fontSize: 13,
             background: 'var(--bg-input)', color: 'var(--text-main)',
             border: '1px solid var(--border)', outline: 'none',
           }}
         />
+        {headerRight}
       </div>
 
       <div style={{ overflowX: 'auto' }}>

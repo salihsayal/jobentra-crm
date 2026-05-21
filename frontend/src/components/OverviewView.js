@@ -183,10 +183,10 @@ export default function OverviewView({ view, onRowClick }) {
   const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   const LABELS = {
-    customers: { title: 'Kunden', article: 'Neuen' },
-    candidates: { title: 'Kandidaten', article: 'Neuen' },
-    jobs: { title: 'Job', article: 'Neuen' },
-    billings: { title: 'Rechnung', article: 'Neue' },
+    customers: { title: 'Kunden', article: 'Neuen', entityType: 'customer' },
+    candidates: { title: 'Kandidaten', article: 'Neuen', entityType: 'candidate' },
+    jobs: { title: 'Job', article: 'Neuen', entityType: 'job' },
+    billings: { title: 'Rechnung', article: 'Neue', entityType: 'billing' },
   };
 
   function handleCreate(newEntity) {
@@ -241,6 +241,7 @@ export default function OverviewView({ view, onRowClick }) {
           barData={barChartData}
           pieLabel="Job Status Verteilung"
           barLabel="Kandidaten Status"
+          entityType="dashboard"
         />
       </div>
     );
@@ -251,31 +252,29 @@ export default function OverviewView({ view, onRowClick }) {
 
   return (
     <div>
-      <StatsCharts pieData={pieData} barData={barData} />
+      <StatsCharts pieData={pieData} barData={barData} entityType={LABELS[view]?.entityType || view} />
       <div style={{ marginTop: 24 }}>
-        {view !== 'dashboard' && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button
-              onClick={() => setSlideOverOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
-            >
-              <Plus size={16} />
-              + {LABELS[view]?.article} {LABELS[view]?.title} anlegen
-            </button>
-          </div>
-        )}
         <Card>
           <DataTable
             data={config.data || []}
             columns={config.tableColumns || []}
             searchPlaceholder={`${config.title} durchsuchen...`}
             onRowClick={onRowClick}
+            headerRight={view !== 'dashboard' ? (
+              <button
+                onClick={() => setSlideOverOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors whitespace-nowrap"
+              >
+                <Plus size={16} />
+                {LABELS[view]?.article} {LABELS[view]?.title} anlegen
+              </button>
+            ) : null}
           />
         </Card>
       </div>
 
       <CreateSlideOver
-        entityType={view}
+        entityType={LABELS[view]?.entityType || view}
         open={slideOverOpen}
         onClose={() => setSlideOverOpen(false)}
         onSave={handleCreate}

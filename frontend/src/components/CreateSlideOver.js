@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 
+const FIELD_ORDER = {
+  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'skills'],
+  customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status'],
+  job: ['id', 'title', 'description', 'customerName', 'salaryRange', 'status'],
+  billing: ['id', 'invoiceNumber', 'customerName', 'candidateName', 'amount', 'currency', 'status', 'dueDate'],
+};
+
 const FORM_CONFIGS = {
   candidate: {
     title: 'Neuen Kandidaten anlegen',
@@ -69,10 +76,6 @@ const inputStyle = {
   transition: 'border-color 0.15s ease',
 };
 
-const inputFocusStyle = {
-  borderBottom: '1px solid var(--accent)',
-};
-
 const selectStyle = {
   ...inputStyle,
   cursor: 'pointer',
@@ -82,10 +85,12 @@ const selectStyle = {
 export default function CreateSlideOver({ entityType, open, onClose, onSave }) {
   const config = FORM_CONFIGS[entityType];
   const [formData, setFormData] = useState({});
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     if (open && config) {
       setFormData({ ...config.defaults });
+      setValidationErrors({});
     }
   }, [open, config]);
 
@@ -99,12 +104,42 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave }) {
 
   if (!config) return null;
 
+  function validateField(key, value) {
+    const str = String(value ?? '').trim();
+    if (!str) {
+      setValidationErrors(prev => ({ ...prev, [key]: null }));
+      return true;
+    }
+    if (key === 'email') {
+      const valid = str.includes('@') && str.lastIndexOf('.') > str.indexOf('@');
+      setValidationErrors(prev => ({ ...prev, [key]: valid ? null : 'Ung\u00fcltige E-Mail-Adresse' }));
+      return valid;
+    }
+    if (key === 'phone') {
+      const valid = !/[^0-9+\-() ]/.test(str);
+      setValidationErrors(prev => ({ ...prev, [key]: valid ? null : 'Nur Zahlen und Sonderzeichen erlaubt' }));
+      return valid;
+    }
+    setValidationErrors(prev => ({ ...prev, [key]: null }));
+    return true;
+  }
+
   function updateField(key, value) {
     setFormData(prev => ({ ...prev, [key]: value }));
+    validateField(key, value);
   }
 
   function handleSave() {
-    const newEntity = { id: config.generateId(), ...formData };
+    const hasErrors = Object.values(validationErrors).some(Boolean);
+    if (hasErrors) return;
+
+    const id = config.generateId();
+    const order = FIELD_ORDER[entityType] || Object.keys(formData);
+    const newEntity = {};
+    order.forEach(key => {
+      if (key === 'id') newEntity.id = id;
+      else if (key in formData) newEntity[key] = formData[key];
+    });
 
     if (entityType === 'candidate' && typeof newEntity.skills === 'string') {
       newEntity.skills = newEntity.skills.split(',').map(s => s.trim()).filter(Boolean);
@@ -198,6 +233,11 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave }) {
                     className="focus:border-app-accent placeholder:text-app-text-dim"
                     step={field.type === 'number' ? '0.01' : undefined}
                   />
+                )}
+                {validationErrors[field.key] && (
+                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+                    {validationErrors[field.key]}
+                  </div>
                 )}
               </div>
             ))}
