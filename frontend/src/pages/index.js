@@ -35,39 +35,45 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-6 text-center">Jobentra CRM</h1>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
+      <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card)', padding: 32, borderRadius: 12, width: 384, border: '1px solid var(--border)' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, textAlign: 'center', color: 'var(--accent)' }}>
+          Jobentra CRM
+        </h1>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+          <div style={{ background: 'var(--danger)', color: '#fff', padding: '8px 12px', borderRadius: 6, marginBottom: 16, fontSize: 13 }}>
             {error}
           </div>
         )}
 
-        <label className="block mb-1 text-sm text-gray-600">Email</label>
+        <label style={{ display: 'block', marginBottom: 4, fontSize: 13, color: 'var(--text-muted)' }}>Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-2 border rounded mb-4"
+          style={{ width: '100%', padding: '8px 12px', borderRadius: 6, marginBottom: 16, fontSize: 14, background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
           required
           autoFocus
         />
 
-        <label className="block mb-1 text-sm text-gray-600">Password</label>
+        <label style={{ display: 'block', marginBottom: 4, fontSize: 13, color: 'var(--text-muted)' }}>Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded mb-6"
+          style={{ width: '100%', padding: '8px 12px', borderRadius: 6, marginBottom: 24, fontSize: 14, background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border)', outline: 'none' }}
           required
         />
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          style={{
+            width: '100%', padding: '10px', borderRadius: 6, fontSize: 14, fontWeight: 600,
+            background: 'var(--accent)', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+          }}
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
