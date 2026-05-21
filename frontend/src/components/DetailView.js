@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { ArrowLeft, FileText, ShieldOff, Check, Undo2 } from 'lucide-react';
+import { saveAllMockData } from '@/utils/mockData';
 
 const FIELD_LABELS = {
   companyName: 'Unternehmen',
@@ -142,6 +143,7 @@ export default function DetailView({ entity, entityType, onBack }) {
     originalData.current = { ...entity };
     setFormData({ ...entity });
     setValidationErrors({});
+    saveAllMockData();
   }
 
   function handleCancel() {

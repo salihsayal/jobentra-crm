@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 
 const FIELD_ORDER = {
-  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'skills'],
-  customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status'],
-  job: ['id', 'title', 'description', 'customerName', 'salaryRange', 'status'],
-  billing: ['id', 'invoiceNumber', 'customerName', 'candidateName', 'amount', 'currency', 'status', 'dueDate'],
+  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'skills', 'isArchived'],
+  customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status', 'isArchived'],
+  job: ['id', 'title', 'description', 'customerName', 'salaryRange', 'status', 'isArchived'],
+  billing: ['id', 'invoiceNumber', 'customerName', 'candidateName', 'amount', 'currency', 'status', 'dueDate', 'isArchived'],
 };
 
 const FORM_CONFIGS = {

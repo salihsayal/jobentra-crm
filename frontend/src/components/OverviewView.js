@@ -1,10 +1,11 @@
-import { useState, useReducer } from 'react';
+import { useState, useReducer, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import StatsCharts from './StatsCharts';
 import DataTable from './DataTable';
 import CreateSlideOver from './CreateSlideOver';
 import {
   mockCustomers, mockCandidates, mockJobs, mockBillings,
+  saveAllMockData,
 } from '@/utils/mockData';
 
 const STATUS_COLORS = {
@@ -180,7 +181,16 @@ function StatCard({ label, value, color }) {
 export default function OverviewView({ view, onRowClick }) {
   const config = VIEW_CONFIG[view];
   const [slideOverOpen, setSlideOverOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [, forceUpdate] = useReducer(x => x + 1, 0);
+
+  const totalArchived = config.data ? config.data.filter(item => item.isArchived).length : 0;
+
+  useEffect(() => {
+    if (showArchived && totalArchived === 0) {
+      setShowArchived(false);
+    }
+  }, [showArchived, totalArchived]);
 
   const LABELS = {
     customers: { title: 'Kunden', article: 'Neuen', entityType: 'customer' },
@@ -190,6 +200,7 @@ export default function OverviewView({ view, onRowClick }) {
   };
 
   function handleCreate(newEntity) {
+    newEntity.isArchived = false;
     const map = {
       candidates: mockCandidates,
       customers: mockCustomers,
@@ -199,9 +210,48 @@ export default function OverviewView({ view, onRowClick }) {
     const arr = map[view];
     if (arr) {
       arr.push(newEntity);
+      saveAllMockData();
       forceUpdate();
       setSlideOverOpen(false);
     }
+  }
+
+  function handleBulkArchive(ids) {
+    const data = config.data;
+    if (!data) return;
+    ids.forEach(id => {
+      const item = data.find(d => d.id === id);
+      if (item) item.isArchived = true;
+    });
+    saveAllMockData();
+    forceUpdate();
+  }
+
+  function handleBulkUnarchive(ids) {
+    const data = config.data;
+    if (!data) return;
+    ids.forEach(id => {
+      const item = data.find(d => d.id === id);
+      if (item) item.isArchived = false;
+    });
+    saveAllMockData();
+    forceUpdate();
+  }
+
+  function handleBulkDelete(ids) {
+    const data = config.data;
+    if (!data) return;
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (ids.includes(data[i].id)) data.splice(i, 1);
+    }
+    saveAllMockData();
+    forceUpdate();
+  }
+
+  function getActiveData() {
+    if (!config || !config.data) return [];
+    if (showArchived) return config.data.filter(item => item.isArchived);
+    return config.data.filter(item => !item.isArchived);
   }
 
   if (!config) return null;
@@ -256,18 +306,33 @@ export default function OverviewView({ view, onRowClick }) {
       <div style={{ marginTop: 24 }}>
         <Card>
           <DataTable
-            data={config.data || []}
+            data={getActiveData()}
             columns={config.tableColumns || []}
             searchPlaceholder={`${config.title} durchsuchen...`}
             onRowClick={onRowClick}
+            onBulkArchive={handleBulkArchive}
+            onBulkUnarchive={handleBulkUnarchive}
+            onBulkDelete={handleBulkDelete}
+            showArchived={showArchived}
+            totalArchived={totalArchived}
             headerRight={view !== 'dashboard' ? (
-              <button
-                onClick={() => setSlideOverOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors whitespace-nowrap"
-              >
-                <Plus size={16} />
-                {LABELS[view]?.article} {LABELS[view]?.title} anlegen
-              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                {totalArchived > 0 && (
+                  <button
+                    onClick={() => setShowArchived(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors whitespace-nowrap"
+                  >
+                    {showArchived ? 'Aktive anzeigen' : 'Archiv anzeigen'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setSlideOverOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors whitespace-nowrap"
+                >
+                  <Plus size={16} />
+                  {LABELS[view]?.article} {LABELS[view]?.title} anlegen
+                </button>
+              </div>
             ) : null}
           />
         </Card>
