@@ -89,8 +89,30 @@ public class BillingController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        billingService.deleteBilling(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
+        try {
+            billingService.deleteBilling(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<?> archive(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(billingService.archiveBilling(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/unarchive")
+    public ResponseEntity<?> unarchive(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(billingService.unarchiveBilling(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

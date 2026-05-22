@@ -104,8 +104,8 @@ export default function DataTable({ data, columns, searchPlaceholder, onRowClick
   const allChecked = sorted.length > 0 && sorted.every(r => selectedIds.has(r.id));
   const someChecked = sorted.some(r => selectedIds.has(r.id));
   const hasSelection = selectedIds.size > 0;
-  const anyArchivedSelected = hasSelection && sorted.some(r => selectedIds.has(r.id) && r.isArchived);
-  const allArchivedSelected = hasSelection && sorted.filter(r => selectedIds.has(r.id)).every(r => r.isArchived);
+  const anyArchivedSelected = hasSelection && sorted.some(r => selectedIds.has(r.id) && r.archived);
+  const allArchivedSelected = hasSelection && sorted.filter(r => selectedIds.has(r.id)).every(r => r.archived);
 
   return (
     <div>
@@ -209,7 +209,7 @@ export default function DataTable({ data, columns, searchPlaceholder, onRowClick
                   onClick={() => onRowClick(row)}
                   style={{
                     borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s',
-                    ...(row.isArchived ? { background: 'rgba(100,116,139,0.04)', color: 'var(--text-dim)' } : {}),
+                    ...(row.archived ? { background: 'rgba(100,116,139,0.04)', color: 'var(--text-dim)' } : {}),
                   }}
                   className="hover:bg-app-bg-hover"
                 >
@@ -224,7 +224,7 @@ export default function DataTable({ data, columns, searchPlaceholder, onRowClick
                     const val = row[col.key];
                     const display = col.render ? col.render(val, row) : (val ?? '-');
                     return (
-                      <td key={col.key} style={{ padding: '14px 16px', whiteSpace: 'nowrap', color: row.isArchived ? 'var(--text-dim)' : 'var(--text-main)' }}>
+                      <td key={col.key} style={{ padding: '14px 16px', whiteSpace: 'nowrap', color: row.archived ? 'var(--text-dim)' : 'var(--text-main)' }}>
                         {typeof display === 'string' ? display : display}
                       </td>
                     );

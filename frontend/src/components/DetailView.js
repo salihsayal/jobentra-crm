@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
 import { ArrowLeft, FileText, ShieldOff, Check, Undo2 } from 'lucide-react';
-import { saveAllMockData } from '@/utils/mockData';
 
 const FIELD_LABELS = {
   companyName: 'Unternehmen',
@@ -69,7 +68,7 @@ const inputBaseStyle = {
   transition: 'background 0.15s ease, border-color 0.15s ease',
 };
 
-export default function DetailView({ entity, entityType, onBack }) {
+export default function DetailView({ entity, entityType, onBack, onEntityUpdate }) {
   const originalData = useRef({ ...entity });
   const [formData, setFormData] = useState({ ...entity });
   const [focusedField, setFocusedField] = useState(null);
@@ -133,17 +132,22 @@ export default function DetailView({ entity, entityType, onBack }) {
     validateField(key, value);
   }
 
-  function handleSave() {
+  async function handleSave() {
     const hasErrors = Object.values(validationErrors).some(Boolean);
     if (hasErrors) return;
 
-    editableKeys.forEach(key => {
-      entity[key] = parseValue(key, formData[key], entityType);
-    });
+    const body = {};
+    editableKeys.forEach(key => { body[key] = parseValue(key, formData[key], entityType); });
+
+    if (onEntityUpdate) {
+      try {
+        const updated = await onEntityUpdate(entityType, entity.id, body);
+        if (updated) Object.keys(updated).forEach(k => { if (k in entity) entity[k] = updated[k]; });
+      } catch {}
+    }
     originalData.current = { ...entity };
     setFormData({ ...entity });
     setValidationErrors({});
-    saveAllMockData();
   }
 
   function handleCancel() {
@@ -244,17 +248,25 @@ export default function DetailView({ entity, entityType, onBack }) {
                       value={formData[key] || ''}
                       onChange={(e) => handleChange(key, e.target.value)}
                       style={{
-                        ...inputBaseStyle,
-                        cursor: 'pointer',
                         background: 'var(--bg-input)',
-                        padding: '2px 6px',
-                        borderRadius: 4,
                         border: '1px solid var(--border)',
-                        maxWidth: 160,
+                        color: 'var(--text-main)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: '6px 28px 6px 10px',
+                        borderRadius: 6,
+                        outline: 'none',
+                        cursor: 'pointer',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%2710%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2371717a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E")',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 8px center',
+                        transition: 'border-color 0.15s ease',
                       }}
                     >
                       {statusOpts.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt} value={opt} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>{opt}</option>
                       ))}
                     </select>
                   ) : key === 'amount' ? (

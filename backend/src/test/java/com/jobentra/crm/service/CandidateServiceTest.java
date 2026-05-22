@@ -197,10 +197,11 @@ class CandidateServiceTest {
 
     @Test
     void deleteCandidate_shouldDelegateToRepository() {
-        doNothing().when(candidateRepository).deleteById(candidateId);
+        when(candidateRepository.findById(candidateId)).thenReturn(Optional.of(candidate));
+        doNothing().when(candidateRepository).delete(candidate);
 
         candidateService.deleteCandidate(candidateId);
 
-        verify(candidateRepository).deleteById(candidateId);
+        verify(candidateRepository).delete(candidate);
     }
 }

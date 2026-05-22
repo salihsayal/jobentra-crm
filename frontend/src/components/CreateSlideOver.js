@@ -77,9 +77,22 @@ const inputStyle = {
 };
 
 const selectStyle = {
-  ...inputStyle,
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-main)',
+  fontSize: 14,
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: 8,
+  outline: 'none',
   cursor: 'pointer',
   appearance: 'none',
+  WebkitAppearance: 'none',
+  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2371717a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%276 9 12 15 18 9%27%3E%3C/polyline%3E%3C/svg%3E")',
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+  paddingRight: 36,
+  transition: 'border-color 0.15s ease, background-color 0.15s ease',
 };
 
 export default function CreateSlideOver({ entityType, open, onClose, onSave }) {

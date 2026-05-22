@@ -3,6 +3,7 @@ package com.jobentra.crm.service;
 import com.jobentra.crm.model.Candidate;
 import com.jobentra.crm.model.enums.CandidateStatus;
 import com.jobentra.crm.repository.CandidateRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,7 +56,28 @@ public class CandidateService {
     }
 
     public void deleteCandidate(UUID id) {
-        candidateRepository.deleteById(id);
+        Candidate c = candidateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Candidate not found: " + id));
+        try {
+            candidateRepository.delete(c);
+            candidateRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("Candidate is referenced by billing records. Delete those first.");
+        }
+    }
+
+    public Candidate archiveCandidate(UUID id) {
+        Candidate c = candidateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Candidate not found: " + id));
+        c.setArchived(true);
+        return candidateRepository.save(c);
+    }
+
+    public Candidate unarchiveCandidate(UUID id) {
+        Candidate c = candidateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Candidate not found: " + id));
+        c.setArchived(false);
+        return candidateRepository.save(c);
     }
 
     private CandidateStatus parseStatus(String status) {

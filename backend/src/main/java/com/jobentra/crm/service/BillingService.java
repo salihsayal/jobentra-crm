@@ -9,6 +9,7 @@ import com.jobentra.crm.repository.BillingRepository;
 import com.jobentra.crm.repository.CandidateRepository;
 import com.jobentra.crm.repository.CustomerRepository;
 import com.jobentra.crm.repository.JobRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -106,7 +107,28 @@ public class BillingService {
     }
 
     public void deleteBilling(UUID id) {
-        billingRepository.deleteById(id);
+        Billing b = billingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Billing not found: " + id));
+        try {
+            billingRepository.delete(b);
+            billingRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("Billing record has references that prevent deletion.");
+        }
+    }
+
+    public Billing archiveBilling(UUID id) {
+        Billing b = billingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Billing not found: " + id));
+        b.setArchived(true);
+        return billingRepository.save(b);
+    }
+
+    public Billing unarchiveBilling(UUID id) {
+        Billing b = billingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Billing not found: " + id));
+        b.setArchived(false);
+        return billingRepository.save(b);
     }
 
     private BillingStatus parseStatus(String status) {

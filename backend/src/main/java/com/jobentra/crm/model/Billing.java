@@ -44,6 +44,9 @@ public class Billing {
     @Column(nullable = false)
     private BillingStatus status = BillingStatus.DRAFT;
 
+    @Column(nullable = false)
+    private boolean archived = false;
+
     private LocalDate dueDate;
 
     @Column(nullable = false, updatable = false)
@@ -88,6 +91,9 @@ public class Billing {
 
     public BillingStatus getStatus() { return status; }
     public void setStatus(BillingStatus status) { this.status = status; }
+
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
 
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }

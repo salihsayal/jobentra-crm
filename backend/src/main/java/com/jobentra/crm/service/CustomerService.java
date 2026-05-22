@@ -3,6 +3,7 @@ package com.jobentra.crm.service;
 import com.jobentra.crm.model.Customer;
 import com.jobentra.crm.model.enums.CustomerStatus;
 import com.jobentra.crm.repository.CustomerRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,7 +56,28 @@ public class CustomerService {
     }
 
     public void deleteCustomer(UUID id) {
-        customerRepository.deleteById(id);
+        Customer c = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
+        try {
+            customerRepository.delete(c);
+            customerRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("Customer is referenced by jobs or billings. Delete those first.");
+        }
+    }
+
+    public Customer archiveCustomer(UUID id) {
+        Customer c = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
+        c.setArchived(true);
+        return customerRepository.save(c);
+    }
+
+    public Customer unarchiveCustomer(UUID id) {
+        Customer c = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + id));
+        c.setArchived(false);
+        return customerRepository.save(c);
     }
 
     private CustomerStatus parseStatus(String status) {

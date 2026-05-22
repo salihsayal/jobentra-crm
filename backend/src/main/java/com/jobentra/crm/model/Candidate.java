@@ -29,6 +29,9 @@ public class Candidate {
     @Column(nullable = false)
     private CandidateStatus status = CandidateStatus.NEW;
 
+    @Column(nullable = false)
+    private boolean archived = false;
+
     @ElementCollection
     @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_id"))
     @Column(name = "skill")
@@ -70,6 +73,9 @@ public class Candidate {
 
     public CandidateStatus getStatus() { return status; }
     public void setStatus(CandidateStatus status) { this.status = status; }
+
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
 
     public List<String> getSkills() { return skills; }
     public void setSkills(List<String> skills) { this.skills = skills; }

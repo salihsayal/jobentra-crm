@@ -29,6 +29,9 @@ public class Job {
     @Column(nullable = false)
     private JobStatus status = JobStatus.DRAFT;
 
+    @Column(nullable = false)
+    private boolean archived = false;
+
     private String salaryRange;
 
     @Column(nullable = false, updatable = false)
@@ -64,6 +67,9 @@ public class Job {
 
     public JobStatus getStatus() { return status; }
     public void setStatus(JobStatus status) { this.status = status; }
+
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
 
     public String getSalaryRange() { return salaryRange; }
     public void setSalaryRange(String salaryRange) { this.salaryRange = salaryRange; }

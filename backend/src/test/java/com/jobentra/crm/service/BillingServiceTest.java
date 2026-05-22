@@ -279,10 +279,11 @@ class BillingServiceTest {
 
     @Test
     void deleteBilling_shouldDelegateToRepository() {
-        doNothing().when(billingRepository).deleteById(billingId);
+        when(billingRepository.findById(billingId)).thenReturn(Optional.of(billing));
+        doNothing().when(billingRepository).delete(billing);
 
         billingService.deleteBilling(billingId);
 
-        verify(billingRepository).deleteById(billingId);
+        verify(billingRepository).delete(billing);
     }
 }

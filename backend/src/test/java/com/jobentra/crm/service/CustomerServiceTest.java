@@ -201,10 +201,11 @@ class CustomerServiceTest {
 
     @Test
     void deleteCustomer_shouldDelegateToRepository() {
-        doNothing().when(customerRepository).deleteById(customerId);
+        when(customerRepository.findById(customerId)).thenReturn(Optional.of(customer));
+        doNothing().when(customerRepository).delete(customer);
 
         customerService.deleteCustomer(customerId);
 
-        verify(customerRepository).deleteById(customerId);
+        verify(customerRepository).delete(customer);
     }
 }

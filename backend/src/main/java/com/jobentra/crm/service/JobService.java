@@ -5,6 +5,7 @@ import com.jobentra.crm.model.Job;
 import com.jobentra.crm.model.enums.JobStatus;
 import com.jobentra.crm.repository.CustomerRepository;
 import com.jobentra.crm.repository.JobRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,28 @@ public class JobService {
     }
 
     public void deleteJob(UUID id) {
-        jobRepository.deleteById(id);
+        Job j = jobRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Job not found: " + id));
+        try {
+            jobRepository.delete(j);
+            jobRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new RuntimeException("Job is referenced by billing records. Delete those first.");
+        }
+    }
+
+    public Job archiveJob(UUID id) {
+        Job j = jobRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Job not found: " + id));
+        j.setArchived(true);
+        return jobRepository.save(j);
+    }
+
+    public Job unarchiveJob(UUID id) {
+        Job j = jobRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Job not found: " + id));
+        j.setArchived(false);
+        return jobRepository.save(j);
     }
 
     private JobStatus parseStatus(String status) {

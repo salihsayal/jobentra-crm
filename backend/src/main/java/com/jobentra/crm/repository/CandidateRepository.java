@@ -18,11 +18,12 @@ public interface CandidateRepository extends JpaRepository<Candidate, UUID> {
 
     Page<Candidate> findByStatus(CandidateStatus status, Pageable pageable);
 
-    @Query("SELECT c FROM Candidate c WHERE " +
+    @Query("SELECT DISTINCT c FROM Candidate c LEFT JOIN c.skills s WHERE " +
            "(:search IS NULL OR :search = '' OR " +
            "LOWER(c.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(c.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(c.email) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "LOWER(c.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(s) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
            "(:status IS NULL OR c.status = :status)")
     Page<Candidate> searchCandidates(@Param("search") String search,
                                      @Param("status") CandidateStatus status,

@@ -181,10 +181,11 @@ class JobServiceTest {
 
     @Test
     void deleteJob_shouldDelegateToRepository() {
-        doNothing().when(jobRepository).deleteById(jobId);
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        doNothing().when(jobRepository).delete(job);
 
         jobService.deleteJob(jobId);
 
-        verify(jobRepository).deleteById(jobId);
+        verify(jobRepository).delete(job);
     }
 }
