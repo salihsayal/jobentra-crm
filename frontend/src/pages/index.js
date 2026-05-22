@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
 export default function Login() {
@@ -6,7 +6,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/customers?size=1').finally(() => setReady(true));
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -68,14 +73,14 @@ export default function Login() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !ready}
           style={{
             width: '100%', padding: '10px', borderRadius: 6, fontSize: 14, fontWeight: 600,
-            background: 'var(--accent)', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
+            background: 'var(--accent)', color: '#fff', border: 'none', cursor: (loading || !ready) ? 'not-allowed' : 'pointer',
+            opacity: (loading || !ready) ? 0.6 : 1,
           }}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {!ready ? 'Connecting...' : loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
     </div>

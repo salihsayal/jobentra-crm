@@ -8,6 +8,7 @@ export default function App({ Component, pageProps }) {
     const mode = getStoredTheme();
     applyTheme(mode);
     restoreFromStorage();
+    fetch('/api/customers?size=1').catch(() => {});
   }, []);
 
   return <Component {...pageProps} />;

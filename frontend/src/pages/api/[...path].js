@@ -45,8 +45,18 @@ export default async function handler(req, res) {
     if (backendResponse.status === 204) {
       return res.status(204).end();
     }
-    res.status(backendResponse.status).json(JSON.parse(text));
+    if (!text) {
+      console.error('Empty backend response for', url, 'status:', backendResponse.status);
+      return res.status(backendResponse.status || 502).end();
+    }
+    try {
+      const data = JSON.parse(text);
+      res.status(backendResponse.status).json(data);
+    } catch {
+      res.status(502).json({ error: 'Invalid response from backend' });
+    }
   } catch (err) {
+    console.error('API proxy error:', url, err.message || err);
     res.status(502).json({ error: 'Backend unreachable' });
   }
 }
