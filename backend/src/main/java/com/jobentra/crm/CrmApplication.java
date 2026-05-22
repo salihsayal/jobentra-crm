@@ -114,7 +114,7 @@ public class CrmApplication {
                 ca1.setPhone("+49 170 1234567");
                 ca1.setStatus(CandidateStatus.IN_PROCESS);
                 ca1.setSkills("Java, Spring Boot, AWS, Kubernetes");
-                ca1.setLocation("M\u00FCnster");
+                ca1.setLocation("48155 M\u00FCnster Hafenstra\u00DFe 42");
                 ca1.setMobility(true);
                 ca1.setAvailability("Sofort");
                 ca1.setJob("Software-Entwickler");
@@ -127,7 +127,7 @@ public class CrmApplication {
                 ca2.setPhone("+49 151 9876543");
                 ca2.setStatus(CandidateStatus.NEW);
                 ca2.setSkills("Patientenpflege, Wundversorgung, Dokumentation");
-                ca2.setLocation("Dortmund");
+                ca2.setLocation("44137 Dortmund Westenhellweg 15");
                 ca2.setMobility(false);
                 ca2.setAvailability("2025-07-01");
                 ca2.setJob("Krankenschwester");
@@ -140,7 +140,7 @@ public class CrmApplication {
                 ca3.setPhone("+49 173 5551234");
                 ca3.setStatus(CandidateStatus.PLACED);
                 ca3.setSkills("Elektroinstallation, SPS-Programmierung, Schaltpl\u00E4ne");
-                ca3.setLocation("K\u00F6ln");
+                ca3.setLocation("50667 K\u00F6ln Hohe Stra\u00DFe 88");
                 ca3.setMobility(true);
                 ca3.setAvailability("Sofort");
                 ca3.setJob("Elektriker");
@@ -153,7 +153,7 @@ public class CrmApplication {
                 ca4.setPhone("+49 162 3456789");
                 ca4.setStatus(CandidateStatus.IN_PROCESS);
                 ca4.setSkills("SAP, Microsoft Office, Buchhaltung");
-                ca4.setLocation("Hamburg");
+                ca4.setLocation("20095 Hamburg M\u00F6nckebergstra\u00DFe 7");
                 ca4.setMobility(false);
                 ca4.setAvailability("2025-08-15");
                 ca4.setJob("B\u00FCrokauffrau");
@@ -166,7 +166,7 @@ public class CrmApplication {
                 ca5.setPhone("+49 176 1112233");
                 ca5.setStatus(CandidateStatus.REJECTED);
                 ca5.setSkills("KFZ-Diagnose, Reparatur, Wartung");
-                ca5.setLocation("Berlin");
+                ca5.setLocation("10115 Berlin Friedrichstra\u00DFe 100");
                 ca5.setMobility(true);
                 ca5.setAvailability("Sofort");
                 ca5.setJob("KFZ-Mechatroniker");
@@ -179,7 +179,7 @@ public class CrmApplication {
                 ca6.setPhone("+49 157 4445566");
                 ca6.setStatus(CandidateStatus.NEW);
                 ca6.setSkills("Laboranalyse, Chromatographie, GMP");
-                ca6.setLocation("M\u00FCnchen");
+                ca6.setLocation("80331 M\u00FCnchen Kaufingerstra\u00DFe 22");
                 ca6.setMobility(false);
                 ca6.setAvailability("2025-06-01");
                 ca6.setJob("Chemikant");
@@ -192,7 +192,7 @@ public class CrmApplication {
                 ca7.setPhone("+49 171 7778899");
                 ca7.setStatus(CandidateStatus.IN_PROCESS);
                 ca7.setSkills("K\u00FCche, Service, Warenwirtschaft");
-                ca7.setLocation("Stuttgart");
+                ca7.setLocation("70173 Stuttgart K\u00F6nigstra\u00DFe 55");
                 ca7.setMobility(true);
                 ca7.setAvailability("Sofort");
                 ca7.setJob("Koch");
@@ -205,7 +205,7 @@ public class CrmApplication {
                 ca8.setPhone("+49 179 2223344");
                 ca8.setStatus(CandidateStatus.NEW);
                 ca8.setSkills("Fr\u00FChp\u00E4dagogik, Elternarbeit, Dokumentation");
-                ca8.setLocation("Frankfurt");
+                ca8.setLocation("60311 Frankfurt Zeil 12");
                 ca8.setMobility(false);
                 ca8.setAvailability("2025-09-01");
                 ca8.setJob("Erzieherin");

@@ -52,7 +52,7 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
                 className="w-full text-left px-4 py-2 text-sm hover:bg-app-bg-hover transition-colors flex justify-between items-center"
               >
                 <span>{c.firstName} {c.lastName} {'\u2014'} {c.job || ''}</span>
-                <span className="text-xs text-app-text-dim">{c.location || ''}</span>
+                <span className="text-xs text-app-text-dim">{c.location ? c.location.replace(/^\d{5}\s+(\S+).*/, '$1') : ''}</span>
               </button>
             ))}
             {omniResults.jobs.length > 0 && (

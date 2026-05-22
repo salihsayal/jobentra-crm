@@ -28,9 +28,11 @@ const TABLE_COLUMNS = {
       </div>
     )},
     { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => <span style={{ fontSize: 12, maxWidth: 180, display: 'inline-block', whiteSpace: 'normal', lineHeight: 1.4 }}>{v || '-'}</span> },
-    { key: 'location', label: 'Ort', render: (v, row) => (
+    { key: 'location', label: 'Ort', render: (v, row) => {
+      const city = v ? v.replace(/^\d{5}\s+(\S+).*/, '$1') : null;
+      return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span>{v || '-'}</span>
+        <span>{city || '-'}</span>
         {row.mobility ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, width: 'fit-content' }}>
             PKW
@@ -41,7 +43,8 @@ const TABLE_COLUMNS = {
           </span>
         )}
       </div>
-    )},
+      );
+    }},
     { key: 'availability', label: 'Verf\u00FCgbar', render: (v) => {
       if (v && /^\d{4}-\d{2}-\d{2}/.test(v)) {
         return new Date(v + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
