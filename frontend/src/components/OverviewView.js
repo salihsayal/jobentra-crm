@@ -63,8 +63,12 @@ export default function OverviewView({ view, data, allData, onRowClick, onCreate
   let pieD = [], barD = [];
   if (view === 'customers') { pieD = grouped(dp, 'industry', 'Sonstige', 'value'); barD = grouped(dp, 'status', 'LEAD', 'count'); }
   else if (view === 'candidates') { pieD = grouped(dp, 'status', 'NEW', 'value'); barD = skillsForBar(dp); }
-  else if (view === 'jobs') { pieD = grouped(dp, 'status', 'DRAFT', 'value'); barD = grouped(dp, 'customerName', 'Unbekannt', 'count'); }
-  else if (view === 'billings') { pieD = grouped(dp, 'status', 'DRAFT', 'value'); const r = {}; dp.filter(b => !b.archived).forEach(b => { r[b.currency || 'EUR'] = (r[b.currency || 'EUR'] || 0) + (b.amount || 0); }); barD = Object.entries(r).map(([n, c]) => ({ name: n, count: Math.round(c) })); }
+  else if (view === 'jobs') { pieD = grouped(dp, 'status', 'DRAFT', 'value'); barD = grouped(dp, 'title', 'Unbenannt', 'count'); }
+  else if (view === 'billings') {
+    const sums = {}; dp.filter(b => !b.archived).forEach(b => { sums[b.status || 'DRAFT'] = (sums[b.status || 'DRAFT'] || 0) + (b.amount || 0); });
+    pieD = Object.entries(sums).map(([n, v]) => ({ name: n, value: Math.round(v) }));
+    barD = grouped(dp, 'status', 'DRAFT', 'count');
+  }
 
   return (
     <div>
@@ -80,7 +84,7 @@ export default function OverviewView({ view, data, allData, onRowClick, onCreate
             </div>) : null} />
         </Card>
       </div>
-      <CreateSlideOver entityType={L.entityType || view} open={slideOverOpen} onClose={() => setSlideOverOpen(false)} onSave={handleCreate} />
+      <CreateSlideOver entityType={L.entityType || view} open={slideOverOpen} onClose={() => setSlideOverOpen(false)} onSave={handleCreate} refData={allData} />
     </div>
   );
 }

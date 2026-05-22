@@ -12,20 +12,24 @@ const FIELD_LABELS = {
   lastName: 'Nachname',
   skills: 'F\u00E4higkeiten',
   title: 'Position',
+  customer: 'Kunde',
   customerName: 'Kunde',
   salaryRange: 'Gehaltsspanne',
+  description: 'Beschreibung',
   invoiceNumber: 'Rechnungsnr.',
+  candidate: 'Kandidat',
   candidateName: 'Kandidat',
   amount: 'Betrag',
   currency: 'W\u00E4hrung',
   dueDate: 'F\u00E4lligkeitsdatum',
+  job: 'Job',
 };
 
 const EDITABLE_FIELDS = {
   candidate: ['firstName', 'lastName', 'email', 'phone', 'skills', 'status'],
   customer:  ['companyName', 'contactPerson', 'email', 'phone', 'industry', 'status'],
-  job:       ['title', 'description', 'customerName', 'salaryRange', 'status'],
-  billing:   ['invoiceNumber', 'customerName', 'candidateName', 'amount', 'currency', 'dueDate', 'status'],
+  job:       ['title', 'description', 'salaryRange', 'status'],
+  billing:   ['invoiceNumber', 'amount', 'currency', 'dueDate', 'status'],
 };
 
 const STATUS_OPTIONS = {
@@ -37,6 +41,9 @@ const STATUS_OPTIONS = {
 
 function formatValue(key, value) {
   if (value == null) return '';
+  if (key === 'customer' && value?.companyName) return value.companyName;
+  if (key === 'candidate' && value?.firstName) return `${value.firstName} ${value.lastName}`;
+  if (key === 'job' && value?.title) return value.title;
   if (Array.isArray(value)) return value.join(', ');
   if (key === 'amount') return String(value);
   return String(value);

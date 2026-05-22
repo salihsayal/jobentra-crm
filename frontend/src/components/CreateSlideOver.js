@@ -4,8 +4,8 @@ import { X, Plus } from 'lucide-react';
 const FIELD_ORDER = {
   candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'skills', 'isArchived'],
   customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status', 'isArchived'],
-  job: ['id', 'title', 'description', 'customerName', 'salaryRange', 'status', 'isArchived'],
-  billing: ['id', 'invoiceNumber', 'customerName', 'candidateName', 'amount', 'currency', 'status', 'dueDate', 'isArchived'],
+  job: ['id', 'title', 'description', 'customerId', 'salaryRange', 'status', 'isArchived'],
+  billing: ['id', 'invoiceNumber', 'customerId', 'candidateId', 'jobId', 'amount', 'currency', 'status', 'dueDate', 'archived'],
 };
 
 const FORM_CONFIGS = {
@@ -39,7 +39,7 @@ const FORM_CONFIGS = {
     title: 'Neuen Job anlegen',
     fields: [
       { key: 'title', label: 'Position', type: 'text', required: true },
-      { key: 'customerName', label: 'Kunde', type: 'text', required: true },
+      { key: 'customerId', label: 'Kunde', type: 'entity-select', entity: 'customers', required: true },
       { key: 'description', label: 'Beschreibung', type: 'text' },
       { key: 'salaryRange', label: 'Gehaltsspanne', type: 'text' },
       { key: 'status', label: 'Status', type: 'select', options: ['OPEN', 'CLOSED', 'DRAFT'] },
@@ -51,8 +51,9 @@ const FORM_CONFIGS = {
     title: 'Neue Rechnung anlegen',
     fields: [
       { key: 'invoiceNumber', label: 'Rechnungsnummer', type: 'text', required: true },
-      { key: 'customerName', label: 'Kunde', type: 'text', required: true },
-      { key: 'candidateName', label: 'Kandidat', type: 'text' },
+      { key: 'customerId', label: 'Kunde', type: 'entity-select', entity: 'customers', required: true },
+      { key: 'candidateId', label: 'Kandidat', type: 'entity-select', entity: 'candidates' },
+      { key: 'jobId', label: 'Job', type: 'entity-select', entity: 'jobs' },
       { key: 'amount', label: 'Betrag', type: 'number', required: true },
       { key: 'currency', label: 'W\u00E4hrung', type: 'text' },
       { key: 'dueDate', label: 'F\u00E4lligkeitsdatum', type: 'date' },
@@ -95,7 +96,7 @@ const selectStyle = {
   transition: 'border-color 0.15s ease, background-color 0.15s ease',
 };
 
-export default function CreateSlideOver({ entityType, open, onClose, onSave }) {
+export default function CreateSlideOver({ entityType, open, onClose, onSave, refData }) {
   const config = FORM_CONFIGS[entityType];
   const [formData, setFormData] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
@@ -227,6 +228,25 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave }) {
                         {opt}
                       </option>
                     ))}
+                  </select>
+                ) : field.type === 'entity-select' ? (
+                  <select
+                    value={formData[field.key] || ''}
+                    onChange={e => updateField(field.key, e.target.value)}
+                    style={selectStyle}
+                    className="focus:border-app-accent"
+                  >
+                    <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-dim)' }}>
+                      {field.required ? 'Bitte w\u00e4hlen...' : 'Keine'}
+                    </option>
+                    {(refData?.[field.entity] || []).filter(e => !e.archived).map(entity => {
+                      const label = entity.companyName || (entity.firstName && entity.lastName ? `${entity.firstName} ${entity.lastName}` : null) || entity.title || entity.invoiceNumber || entity.id;
+                      return (
+                        <option key={entity.id} value={entity.id} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 ) : field.type === 'date' ? (
                   <input
