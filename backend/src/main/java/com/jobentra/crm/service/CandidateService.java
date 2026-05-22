@@ -51,6 +51,10 @@ public class CandidateService {
         existing.setPhone(updated.getPhone());
         existing.setStatus(updated.getStatus());
         existing.setSkills(updated.getSkills());
+        existing.setLocation(updated.getLocation());
+        existing.setMobility(updated.isMobility());
+        existing.setAvailability(updated.getAvailability());
+        existing.setJob(updated.getJob());
 
         return candidateRepository.save(existing);
     }

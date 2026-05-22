@@ -51,8 +51,8 @@ export default function Topbar({ omniQuery, onOmniChange, omniResults, onOmniSel
                 onClick={() => onOmniSelect('candidate', c)}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-app-bg-hover transition-colors flex justify-between items-center"
               >
-                <span>{c.firstName} {c.lastName}</span>
-                <span className="text-xs text-app-text-dim">{c.email}</span>
+                <span>{c.firstName} {c.lastName} {'\u2014'} {c.job || ''}</span>
+                <span className="text-xs text-app-text-dim">{c.location || ''}</span>
               </button>
             ))}
             {omniResults.jobs.length > 0 && (

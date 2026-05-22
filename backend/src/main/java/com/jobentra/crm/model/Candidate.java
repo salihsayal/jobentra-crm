@@ -3,7 +3,6 @@ package com.jobentra.crm.model;
 import com.jobentra.crm.model.enums.CandidateStatus;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -32,10 +31,16 @@ public class Candidate {
     @Column(nullable = false)
     private boolean archived = false;
 
-    @ElementCollection
-    @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_id"))
-    @Column(name = "skill")
-    private List<String> skills;
+    @Column(columnDefinition = "TEXT")
+    private String skills;
+
+    private String location;
+
+    private boolean mobility;
+
+    private String availability;
+
+    private String job;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -77,8 +82,20 @@ public class Candidate {
     public boolean isArchived() { return archived; }
     public void setArchived(boolean archived) { this.archived = archived; }
 
-    public List<String> getSkills() { return skills; }
-    public void setSkills(List<String> skills) { this.skills = skills; }
+    public String getSkills() { return skills; }
+    public void setSkills(String skills) { this.skills = skills; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public boolean isMobility() { return mobility; }
+    public void setMobility(boolean mobility) { this.mobility = mobility; }
+
+    public String getAvailability() { return availability; }
+    public void setAvailability(String availability) { this.availability = availability; }
+
+    public String getJob() { return job; }
+    public void setJob(String job) { this.job = job; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -20,7 +20,36 @@ const LABELS = { customers: { title: 'Kunden', article: 'Neuen', entityType: 'cu
 
 const TABLE_COLUMNS = {
   customers: [{ key: 'companyName', label: 'Unternehmen' },{ key: 'contactPerson', label: 'Ansprechpartner' },{ key: 'email', label: 'Email' },{ key: 'industry', label: 'Branche' },{ key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }],
-  candidates: [{ key: 'firstName', label: 'Vorname' },{ key: 'lastName', label: 'Nachname' },{ key: 'email', label: 'Email' },{ key: 'phone', label: 'Telefon' },{ key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }],
+  candidates: [
+    { key: 'firstName', label: 'Name & Beruf', render: (v, row) => (
+      <div>
+        <div style={{ fontWeight: 600 }}>{row.firstName} {row.lastName}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{row.job || '-'}</div>
+      </div>
+    )},
+    { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => <span style={{ fontSize: 12, maxWidth: 180, display: 'inline-block', whiteSpace: 'normal', lineHeight: 1.4 }}>{v || '-'}</span> },
+    { key: 'location', label: 'Ort', render: (v, row) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span>{v || '-'}</span>
+        {row.mobility ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, width: 'fit-content' }}>
+            PKW
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 600, background: 'rgba(239,68,68,0.12)', color: '#ef4444', padding: '1px 6px', borderRadius: 4, width: 'fit-content' }}>
+            Kein PKW
+          </span>
+        )}
+      </div>
+    )},
+    { key: 'availability', label: 'Verf\u00FCgbar', render: (v) => {
+      if (v && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+        return new Date(v + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+      }
+      return v || '-';
+    } },
+    { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
+  ],
   jobs: [{ key: 'title', label: 'Position' },{ key: 'customerName', label: 'Kunde', render: (v, row) => row.customer?.companyName || v || '-' },{ key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },{ key: 'salaryRange', label: 'Gehaltsspanne' }],
   billings: [{ key: 'invoiceNumber', label: 'Rechnungsnr.' },{ key: 'customerName', label: 'Kunde', render: (v, r) => r.customer?.companyName || v || '-' },{ key: 'candidateName', label: 'Kandidat', render: (v, r) => r.candidate ? `${r.candidate.firstName} ${r.candidate.lastName}` : (v || '-') },{ key: 'amount', label: 'Betrag', render: v => formatEur(v) },{ key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> }],
 };
@@ -59,10 +88,10 @@ export default function OverviewView({ view, data, allData, onRowClick, onCreate
 
   const dp = data || [];
   const grouped = (d, k, dk, vk) => { const r = {}; d.filter(x => !x.archived).forEach(x => { const v = x[k] || dk; r[v] = (r[v] || 0) + 1; }); return Object.entries(r).map(([n, v]) => ({ name: n, [vk]: v })); };
-  const skillsForBar = (d) => { const r = {}; d.filter(x => !x.archived).forEach(x => { (x.skills || []).forEach(s => { r[s] = (r[s] || 0) + 1; }); }); return Object.entries(r).map(([n, c]) => ({ name: n, count: c })); };
+  const skillsForBar = (d) => { const r = {}; d.filter(x => !x.archived).forEach(x => { (x.skills || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => { r[s] = (r[s] || 0) + 1; }); }); return Object.entries(r).map(([n, c]) => ({ name: n, count: c })); };
   let pieD = [], barD = [];
   if (view === 'customers') { pieD = grouped(dp, 'industry', 'Sonstige', 'value'); barD = grouped(dp, 'status', 'LEAD', 'count'); }
-  else if (view === 'candidates') { pieD = grouped(dp, 'status', 'NEW', 'value'); barD = skillsForBar(dp); }
+  else if (view === 'candidates') { pieD = grouped(dp, 'status', 'NEW', 'value'); barD = grouped(dp, 'job', 'Keine Angabe', 'count'); }
   else if (view === 'jobs') { pieD = grouped(dp, 'status', 'DRAFT', 'value'); barD = grouped(dp, 'title', 'Unbenannt', 'count'); }
   else if (view === 'billings') {
     const sums = {}; dp.filter(b => !b.archived).forEach(b => { sums[b.status || 'DRAFT'] = (sums[b.status || 'DRAFT'] || 0) + (b.amount || 0); });
@@ -72,7 +101,7 @@ export default function OverviewView({ view, data, allData, onRowClick, onCreate
 
   return (
     <div>
-      <StatsCharts pieData={pieD} barData={barD} entityType={L.entityType || view} />
+      <StatsCharts pieData={pieD} barData={barD} entityType={L.entityType || view} barLabel={view === 'candidates' ? 'Berufe' : undefined} />
       <div style={{ marginTop: 24 }}>
         <Card>
           <DataTable data={getActiveData()} columns={TABLE_COLUMNS[view] || []} searchPlaceholder={`${L.title || ''} durchsuchen...`}

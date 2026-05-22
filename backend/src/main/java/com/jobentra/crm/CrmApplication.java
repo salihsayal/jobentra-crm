@@ -113,7 +113,11 @@ public class CrmApplication {
                 ca1.setEmail("m.hoffmann@email.de");
                 ca1.setPhone("+49 170 1234567");
                 ca1.setStatus(CandidateStatus.IN_PROCESS);
-                ca1.setSkills(List.of("Software-Entwickler", "IT-Berater", "Systemadministrator"));
+                ca1.setSkills("Java, Spring Boot, AWS, Kubernetes");
+                ca1.setLocation("M\u00FCnster");
+                ca1.setMobility(true);
+                ca1.setAvailability("Sofort");
+                ca1.setJob("Software-Entwickler");
                 ca1 = candidateRepo.save(ca1);
 
                 Candidate ca2 = new Candidate();
@@ -122,7 +126,11 @@ public class CrmApplication {
                 ca2.setEmail("s.bauer@email.de");
                 ca2.setPhone("+49 151 9876543");
                 ca2.setStatus(CandidateStatus.NEW);
-                ca2.setSkills(List.of("Krankenschwester", "Altenpflegerin", "Medizinische Fachangestellte"));
+                ca2.setSkills("Patientenpflege, Wundversorgung, Dokumentation");
+                ca2.setLocation("Dortmund");
+                ca2.setMobility(false);
+                ca2.setAvailability("2025-07-01");
+                ca2.setJob("Krankenschwester");
                 ca2 = candidateRepo.save(ca2);
 
                 Candidate ca3 = new Candidate();
@@ -131,7 +139,11 @@ public class CrmApplication {
                 ca3.setEmail("l.krueger@email.de");
                 ca3.setPhone("+49 173 5551234");
                 ca3.setStatus(CandidateStatus.PLACED);
-                ca3.setSkills(List.of("Elektriker", "Mechatroniker", "Industriemechaniker"));
+                ca3.setSkills("Elektroinstallation, SPS-Programmierung, Schaltpl\u00E4ne");
+                ca3.setLocation("K\u00F6ln");
+                ca3.setMobility(true);
+                ca3.setAvailability("Sofort");
+                ca3.setJob("Elektriker");
                 ca3 = candidateRepo.save(ca3);
 
                 Candidate ca4 = new Candidate();
@@ -140,7 +152,11 @@ public class CrmApplication {
                 ca4.setEmail("h.schneider@email.de");
                 ca4.setPhone("+49 162 3456789");
                 ca4.setStatus(CandidateStatus.IN_PROCESS);
-                ca4.setSkills(List.of("B\u00fcrokauffrau", "Sachbearbeiterin", "Sekret\u00e4rin"));
+                ca4.setSkills("SAP, Microsoft Office, Buchhaltung");
+                ca4.setLocation("Hamburg");
+                ca4.setMobility(false);
+                ca4.setAvailability("2025-08-15");
+                ca4.setJob("B\u00FCrokauffrau");
                 ca4 = candidateRepo.save(ca4);
 
                 Candidate ca5 = new Candidate();
@@ -149,7 +165,11 @@ public class CrmApplication {
                 ca5.setEmail("f.wagner@email.de");
                 ca5.setPhone("+49 176 1112233");
                 ca5.setStatus(CandidateStatus.REJECTED);
-                ca5.setSkills(List.of("KFZ-Mechatroniker", "LKW-Fahrer", "Berufskraftfahrer"));
+                ca5.setSkills("KFZ-Diagnose, Reparatur, Wartung");
+                ca5.setLocation("Berlin");
+                ca5.setMobility(true);
+                ca5.setAvailability("Sofort");
+                ca5.setJob("KFZ-Mechatroniker");
                 ca5 = candidateRepo.save(ca5);
 
                 Candidate ca6 = new Candidate();
@@ -158,7 +178,11 @@ public class CrmApplication {
                 ca6.setEmail("e.zimmermann@email.de");
                 ca6.setPhone("+49 157 4445566");
                 ca6.setStatus(CandidateStatus.NEW);
-                ca6.setSkills(List.of("Chemikant", "Pharmakant", "Laborant"));
+                ca6.setSkills("Laboranalyse, Chromatographie, GMP");
+                ca6.setLocation("M\u00FCnchen");
+                ca6.setMobility(false);
+                ca6.setAvailability("2025-06-01");
+                ca6.setJob("Chemikant");
                 ca6 = candidateRepo.save(ca6);
 
                 Candidate ca7 = new Candidate();
@@ -167,7 +191,11 @@ public class CrmApplication {
                 ca7.setEmail("j.schaefer@email.de");
                 ca7.setPhone("+49 171 7778899");
                 ca7.setStatus(CandidateStatus.IN_PROCESS);
-                ca7.setSkills(List.of("Koch", "Restaurantfachmann", "Hotelfachmann"));
+                ca7.setSkills("K\u00FCche, Service, Warenwirtschaft");
+                ca7.setLocation("Stuttgart");
+                ca7.setMobility(true);
+                ca7.setAvailability("Sofort");
+                ca7.setJob("Koch");
                 ca7 = candidateRepo.save(ca7);
 
                 Candidate ca8 = new Candidate();
@@ -176,7 +204,11 @@ public class CrmApplication {
                 ca8.setEmail("m.koch@email.de");
                 ca8.setPhone("+49 179 2223344");
                 ca8.setStatus(CandidateStatus.NEW);
-                ca8.setSkills(List.of("Erzieherin", "Sozialp\u00e4dagogin", "Kinderpflegerin"));
+                ca8.setSkills("Fr\u00FChp\u00E4dagogik, Elternarbeit, Dokumentation");
+                ca8.setLocation("Frankfurt");
+                ca8.setMobility(false);
+                ca8.setAvailability("2025-09-01");
+                ca8.setJob("Erzieherin");
                 candidateRepo.save(ca8);
 
                 Job j1 = new Job();

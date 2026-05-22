@@ -55,6 +55,10 @@ public class CandidateController {
                 candidate.setStatus(CandidateStatus.valueOf(request.getStatus().toUpperCase()));
             }
             candidate.setSkills(request.getSkills());
+            candidate.setLocation(request.getLocation());
+            candidate.setMobility(request.getMobility() != null && request.getMobility());
+            candidate.setAvailability(request.getAvailability());
+            candidate.setJob(request.getJob());
             return ResponseEntity.ok(candidateService.createCandidate(candidate));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid status: " + request.getStatus()));
@@ -75,6 +79,10 @@ public class CandidateController {
                 updated.setStatus(CandidateStatus.valueOf(request.getStatus().toUpperCase()));
             }
             updated.setSkills(request.getSkills());
+            updated.setLocation(request.getLocation());
+            updated.setMobility(request.getMobility() != null && request.getMobility());
+            updated.setAvailability(request.getAvailability());
+            updated.setJob(request.getJob());
             return ResponseEntity.ok(candidateService.updateCandidate(id, updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid status: " + request.getStatus()));

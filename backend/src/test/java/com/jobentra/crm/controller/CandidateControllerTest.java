@@ -92,7 +92,7 @@ class CandidateControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Alice"))
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.skills[0]").value("Java"));
+                .andExpect(jsonPath("$.skills").value("Java, Spring Boot, PostgreSQL"));
     }
 
     @Test
@@ -113,7 +113,7 @@ class CandidateControllerTest {
                 "email", "alice@example.com",
                 "phone", "+1-555-0201",
                 "status", "IN_PROCESS",
-                "skills", List.of("Java", "Spring Boot")
+                "skills", "Java, Spring Boot"
         ));
 
         mockMvc.perform(post("/api/candidates")
@@ -180,7 +180,7 @@ class CandidateControllerTest {
                 "email", "alice@example.com",
                 "phone", "+1-555-0201",
                 "status", "IN_PROCESS",
-                "skills", List.of("Java")
+                "skills", "Java"
         ));
 
         mockMvc.perform(put("/api/candidates/{id}", candidateId)
@@ -246,7 +246,7 @@ class CandidateControllerTest {
         candidate.setEmail("alice@example.com");
         candidate.setPhone("+1-555-0201");
         candidate.setStatus(CandidateStatus.IN_PROCESS);
-        candidate.setSkills(List.of("Java", "Spring Boot", "PostgreSQL"));
+        candidate.setSkills("Java, Spring Boot, PostgreSQL");
         return candidate;
     }
 }

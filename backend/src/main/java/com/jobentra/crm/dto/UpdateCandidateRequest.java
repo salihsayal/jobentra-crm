@@ -2,7 +2,6 @@ package com.jobentra.crm.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 
 public class UpdateCandidateRequest {
 
@@ -18,7 +17,11 @@ public class UpdateCandidateRequest {
 
     private String phone;
     private String status;
-    private List<String> skills;
+    private String skills;
+    private String location;
+    private Boolean mobility;
+    private String availability;
+    private String job;
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -35,6 +38,18 @@ public class UpdateCandidateRequest {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public List<String> getSkills() { return skills; }
-    public void setSkills(List<String> skills) { this.skills = skills; }
+    public String getSkills() { return skills; }
+    public void setSkills(String skills) { this.skills = skills; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public Boolean getMobility() { return mobility; }
+    public void setMobility(Boolean mobility) { this.mobility = mobility; }
+
+    public String getAvailability() { return availability; }
+    public void setAvailability(String availability) { this.availability = availability; }
+
+    public String getJob() { return job; }
+    public void setJob(String job) { this.job = job; }
 }

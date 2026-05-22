@@ -23,10 +23,13 @@ const FIELD_LABELS = {
   currency: 'W\u00E4hrung',
   dueDate: 'F\u00E4lligkeitsdatum',
   job: 'Job',
+  location: 'Ort',
+  mobility: 'Mobilit\u00E4t',
+  availability: 'Verf\u00FCgbarkeit',
 };
 
 const EDITABLE_FIELDS = {
-  candidate: ['firstName', 'lastName', 'email', 'phone', 'skills', 'status'],
+  candidate: ['firstName', 'lastName', 'email', 'phone', 'skills', 'job', 'location', 'mobility', 'availability', 'status'],
   customer:  ['companyName', 'contactPerson', 'email', 'phone', 'industry', 'status'],
   job:       ['title', 'description', 'salaryRange', 'status'],
   billing:   ['invoiceNumber', 'amount', 'currency', 'dueDate', 'status'],
@@ -44,6 +47,11 @@ function formatValue(key, value) {
   if (key === 'customer' && value?.companyName) return value.companyName;
   if (key === 'candidate' && value?.firstName) return `${value.firstName} ${value.lastName}`;
   if (key === 'job' && value?.title) return value.title;
+  if (key === 'mobility') return value ? 'PKW vorhanden' : 'Kein PKW';
+  if ((key === 'availability' || key === 'dueDate') && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const d = new Date(value + 'T00:00:00');
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
   if (Array.isArray(value)) return value.join(', ');
   if (key === 'amount') return String(value);
   return String(value);
@@ -51,12 +59,12 @@ function formatValue(key, value) {
 
 function parseValue(key, value, entityType) {
   if (key === 'skills' && entityType === 'candidate') {
-    if (Array.isArray(value)) return value;
-    return String(value ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    return String(value ?? '');
   }
   if (key === 'amount' && entityType === 'billing') {
     return parseFloat(value) || 0;
   }
+  if (key === 'mobility') return value === true || value === 'true';
   return value;
 }
 
@@ -150,7 +158,10 @@ export default function DetailView({ entity, entityType, onBack, onEntityUpdate 
       try {
         const updated = await onEntityUpdate(entityType, entity.id, body);
         if (updated) Object.keys(updated).forEach(k => { if (k in entity) entity[k] = updated[k]; });
-      } catch {}
+      } catch (e) {
+        console.error('Save failed:', e);
+        return;
+      }
     }
     originalData.current = { ...entity };
     setFormData({ ...entity });
@@ -286,6 +297,27 @@ export default function DetailView({ entity, entityType, onBack, onEntityUpdate 
                       onBlur={() => setFocusedField(null)}
                       style={inputStyle(key)}
                     />
+                  ) : key === 'mobility' ? (
+                    <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Kein PKW</span>
+                      <div
+                        onClick={() => handleChange(key, !formData[key])}
+                        style={{
+                          width: 36, height: 20, borderRadius: 10,
+                          background: formData[key] ? 'var(--accent)' : 'var(--border)',
+                          position: 'relative', transition: 'background 0.2s ease',
+                        }}
+                      >
+                        <div style={{
+                          width: 16, height: 16, borderRadius: '50%',
+                          background: '#fff',
+                          position: 'absolute', top: 2,
+                          left: formData[key] ? 18 : 2,
+                          transition: 'left 0.2s ease',
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>PKW</span>
+                    </label>
                   ) : key === 'dueDate' ? (
                     <input
                       type="date"

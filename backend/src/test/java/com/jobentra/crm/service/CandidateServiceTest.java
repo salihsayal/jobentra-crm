@@ -45,7 +45,7 @@ class CandidateServiceTest {
         candidate.setEmail("alice@example.com");
         candidate.setPhone("+1-555-0201");
         candidate.setStatus(CandidateStatus.IN_PROCESS);
-        candidate.setSkills(List.of("Java", "Spring Boot", "PostgreSQL"));
+        candidate.setSkills("Java, Spring Boot, PostgreSQL");
     }
 
     @Test
@@ -136,7 +136,7 @@ class CandidateServiceTest {
         updated.setEmail("alice@example.com");
         updated.setPhone("+1-555-9999");
         updated.setStatus(CandidateStatus.PLACED);
-        updated.setSkills(List.of("Python"));
+        updated.setSkills("Python");
 
         when(candidateRepository.findById(candidateId)).thenReturn(Optional.of(candidate));
         when(candidateRepository.save(candidate)).thenReturn(candidate);
@@ -146,7 +146,7 @@ class CandidateServiceTest {
         assertThat(result.getFirstName()).isEqualTo("Alice Updated");
         assertThat(result.getPhone()).isEqualTo("+1-555-9999");
         assertThat(result.getStatus()).isEqualTo(CandidateStatus.PLACED);
-        assertThat(result.getSkills()).containsExactly("Python");
+        assertThat(result.getSkills()).isEqualTo("Python");
         verify(candidateRepository).save(candidate);
     }
 

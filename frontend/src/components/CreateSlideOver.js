@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 
 const FIELD_ORDER = {
-  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'status', 'skills', 'isArchived'],
+  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'job', 'skills', 'location', 'mobility', 'availability', 'status', 'archived'],
   customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status', 'isArchived'],
   job: ['id', 'title', 'description', 'customerId', 'salaryRange', 'status', 'isArchived'],
   billing: ['id', 'invoiceNumber', 'customerId', 'candidateId', 'jobId', 'amount', 'currency', 'status', 'dueDate', 'archived'],
@@ -16,10 +16,14 @@ const FORM_CONFIGS = {
       { key: 'lastName', label: 'Nachname', type: 'text', required: true },
       { key: 'email', label: 'Email', type: 'email', required: true },
       { key: 'phone', label: 'Telefon', type: 'text' },
-      { key: 'skills', label: 'F\u00E4higkeiten (kommagetrennt)', type: 'text' },
+      { key: 'job', label: 'Beruf', type: 'text', required: true },
+      { key: 'skills', label: 'F\u00E4higkeiten', type: 'text' },
+      { key: 'location', label: 'Ort', type: 'text' },
+      { key: 'mobility', label: 'Mobilit\u00E4t', type: 'select', options: ['Ja (PKW)', 'Nein (Kein PKW)'] },
+      { key: 'availability', label: 'Verf\u00FCgbarkeit', type: 'text' },
       { key: 'status', label: 'Status', type: 'select', options: ['NEW', 'IN_PROCESS', 'PLACED', 'REJECTED'] },
     ],
-    defaults: { status: 'NEW', skills: '' },
+    defaults: { status: 'NEW' },
     generateId: () => 'ca' + Date.now(),
   },
   customer: {
@@ -155,8 +159,8 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave, ref
       else if (key in formData) newEntity[key] = formData[key];
     });
 
-    if (entityType === 'candidate' && typeof newEntity.skills === 'string') {
-      newEntity.skills = newEntity.skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (entityType === 'candidate') {
+      newEntity.mobility = newEntity.mobility === 'Ja (PKW)';
     }
     if (entityType === 'billing' && newEntity.amount) {
       newEntity.amount = parseFloat(newEntity.amount) || 0;
