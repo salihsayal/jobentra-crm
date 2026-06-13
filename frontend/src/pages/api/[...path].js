@@ -32,22 +32,30 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', setCookie);
     }
 
-    const contentType = backendResponse.headers.get('content-type');
+    const contentType = backendResponse.headers.get('content-type') || '';
 
-    if (contentType && contentType.includes('text/csv')) {
+    if (contentType.includes('application/pdf') ||
+        contentType.includes('application/octet-stream') ||
+        contentType.includes('application/zip') ||
+        contentType.includes('image/') ||
+        contentType.includes('text/csv')) {
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', backendResponse.headers.get('content-disposition'));
-      const text = await backendResponse.text();
-      return res.status(backendResponse.status).send(text);
+      const disposition = backendResponse.headers.get('content-disposition');
+      if (disposition) res.setHeader('Content-Disposition', disposition);
+      const buffer = await backendResponse.arrayBuffer();
+      res.status(backendResponse.status).send(Buffer.from(buffer));
+      return;
     }
 
     const text = await backendResponse.text();
     if (backendResponse.status === 204) {
-      return res.status(204).end();
+      res.status(204).end();
+      return;
     }
     if (!text) {
       console.error('Empty backend response for', url, 'status:', backendResponse.status);
-      return res.status(backendResponse.status || 502).end();
+      res.status(backendResponse.status || 502).end();
+      return;
     }
     try {
       const data = JSON.parse(text);

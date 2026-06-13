@@ -1,18 +1,29 @@
 package com.jobentra.crm.controller;
 
 import com.jobentra.crm.dto.CreateCandidateRequest;
+import com.jobentra.crm.dto.CreateTimelineEventRequest;
 import com.jobentra.crm.dto.UpdateCandidateRequest;
 import com.jobentra.crm.model.Candidate;
+import com.jobentra.crm.model.CandidateDocument;
+import com.jobentra.crm.model.CandidateTimelineEvent;
 import com.jobentra.crm.model.enums.CandidateStatus;
+import com.jobentra.crm.model.enums.TimelineEventType;
 import com.jobentra.crm.service.AiServiceClient;
+import com.jobentra.crm.service.CandidateDocumentService;
 import com.jobentra.crm.service.CandidateService;
+import com.jobentra.crm.service.CandidateTimelineService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,10 +33,15 @@ public class CandidateController {
 
     private final CandidateService candidateService;
     private final AiServiceClient aiServiceClient;
+    private final CandidateDocumentService documentService;
+    private final CandidateTimelineService timelineService;
 
-    public CandidateController(CandidateService candidateService, AiServiceClient aiServiceClient) {
+    public CandidateController(CandidateService candidateService, AiServiceClient aiServiceClient,
+                                CandidateDocumentService documentService, CandidateTimelineService timelineService) {
         this.candidateService = candidateService;
         this.aiServiceClient = aiServiceClient;
+        this.documentService = documentService;
+        this.timelineService = timelineService;
     }
 
     @GetMapping
@@ -135,6 +151,87 @@ public class CandidateController {
     public ResponseEntity<?> unarchive(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(candidateService.unarchiveCandidate(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<?> listDocuments(@PathVariable UUID id) {
+        try {
+            candidateService.getCandidateById(id)
+                    .orElseThrow(() -> new RuntimeException("Candidate not found: " + id));
+            List<CandidateDocument> docs = documentService.listDocuments(id);
+            return ResponseEntity.ok(docs);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/documents")
+    public ResponseEntity<?> uploadDocument(@PathVariable UUID id,
+                                             @RequestParam("file") MultipartFile file,
+                                             @RequestParam(value = "category", defaultValue = "OTHER") String category) {
+        try {
+            CandidateDocument doc = documentService.uploadDocument(id, file, category);
+            return ResponseEntity.ok(doc);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/documents/{docId}")
+    public ResponseEntity<?> downloadDocument(@PathVariable UUID id, @PathVariable UUID docId) {
+        try {
+            Resource resource = documentService.downloadDocument(id, docId);
+            CandidateDocument doc = documentService.listDocuments(id).stream()
+                    .filter(d -> d.getId().equals(docId))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Document not found"));
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(doc.getMimeType() != null ? doc.getMimeType() : "application/octet-stream"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getOriginalFilename() + "\"")
+                    .body(resource);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}/documents/{docId}")
+    public ResponseEntity<?> deleteDocument(@PathVariable UUID id, @PathVariable UUID docId) {
+        try {
+            documentService.deleteDocument(id, docId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ResponseEntity<?> listTimelineEvents(@PathVariable UUID id) {
+        try {
+            candidateService.getCandidateById(id)
+                    .orElseThrow(() -> new RuntimeException("Candidate not found: " + id));
+            List<CandidateTimelineEvent> events = timelineService.listEvents(id);
+            return ResponseEntity.ok(events);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/timeline")
+    public ResponseEntity<?> createTimelineEvent(@PathVariable UUID id,
+                                                  @Valid @RequestBody CreateTimelineEventRequest request) {
+        try {
+            TimelineEventType type;
+            try {
+                type = TimelineEventType.valueOf(request.getEventType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid event type: " + request.getEventType()));
+            }
+            CandidateTimelineEvent event = timelineService.createEvent(
+                    id, type, request.getTitle(), request.getDescription(), request.getUserName());
+            return ResponseEntity.ok(event);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

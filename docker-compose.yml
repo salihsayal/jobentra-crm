@@ -31,8 +31,11 @@ services:
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       DEMO_EMAIL: ${DEMO_EMAIL}
       DEMO_PASSWORD: ${DEMO_PASSWORD}
+      CANDIDATE_FILES_PATH: /data/candidates
     ports:
       - "8080:8080"
+    volumes:
+      - ./appdata/documents:/data/candidates
     networks:
       - jobentra-network
     depends_on:

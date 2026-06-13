@@ -37,6 +37,34 @@ export const api = {
     delete(id) { return request(`/candidates/${id}`, { method: 'DELETE' }); },
     archive(id) { return request(`/candidates/${id}/archive`, { method: 'PATCH' }); },
     unarchive(id) { return request(`/candidates/${id}/unarchive`, { method: 'PATCH' }); },
+    documents: {
+      list(candidateId) { return request(`/candidates/${candidateId}/documents`); },
+      upload(candidateId, file, category) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', category || 'OTHER');
+        return fetch(`${BASE}/upload?candidateId=${candidateId}`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        }).then(async (res) => {
+          if (res.status === 204) return null;
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `Failed: ${res.status}`);
+          return data;
+        });
+      },
+      downloadUrl(candidateId, docId) {
+        return `${BASE}/candidates/${candidateId}/documents/${docId}`;
+      },
+      delete(candidateId, docId) {
+        return request(`/candidates/${candidateId}/documents/${docId}`, { method: 'DELETE' });
+      },
+    },
+    timeline: {
+      list(candidateId) { return request(`/candidates/${candidateId}/timeline`); },
+      create(candidateId, b) { return request(`/candidates/${candidateId}/timeline`, { method: 'POST', body: JSON.stringify(b) }); },
+    },
   },
   jobs: {
     list(p) { return request(withParams('/jobs', p)); },

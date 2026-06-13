@@ -1,5 +1,6 @@
 import OverviewView from './OverviewView';
 import DetailView from './DetailView';
+import CandidateDetailView from './CandidateDetailView';
 import DataTable from './DataTable';
 
 function StatusBadge({ status }) {
@@ -9,7 +10,12 @@ function StatusBadge({ status }) {
 }
 
 export default function Canvas({ currentView, omniResults, selectedEntity, onRowClick, onBack, onOmniSelect, allData, getEntityData, onCreate, onBulkArchive, onBulkUnarchive, onBulkDelete, onEntityUpdate }) {
-  if (selectedEntity) return <DetailView entity={selectedEntity.data} entityType={selectedEntity.type} onBack={onBack} onEntityUpdate={onEntityUpdate} />;
+  if (selectedEntity) {
+    if (selectedEntity.type === 'candidate') {
+      return <CandidateDetailView entity={selectedEntity.data} onBack={onBack} onEntityUpdate={onEntityUpdate} />;
+    }
+    return <DetailView entity={selectedEntity.data} entityType={selectedEntity.type} onBack={onBack} onEntityUpdate={onEntityUpdate} />;
+  }
 
   if (currentView === 'search') {
     const hAny = (omniResults?.customers?.length || 0) + (omniResults?.candidates?.length || 0) + (omniResults?.jobs?.length || 0) > 0;

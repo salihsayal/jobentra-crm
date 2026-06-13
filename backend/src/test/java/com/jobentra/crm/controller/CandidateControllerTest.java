@@ -8,7 +8,9 @@ import com.jobentra.crm.repository.CandidateRepository;
 import com.jobentra.crm.repository.CustomerRepository;
 import com.jobentra.crm.repository.JobRepository;
 import com.jobentra.crm.service.AiServiceClient;
+import com.jobentra.crm.service.CandidateDocumentService;
 import com.jobentra.crm.service.CandidateService;
+import com.jobentra.crm.service.CandidateTimelineService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +66,12 @@ class CandidateControllerTest {
 
     @MockBean
     private AiServiceClient aiServiceClient;
+
+    @MockBean
+    private CandidateDocumentService candidateDocumentService;
+
+    @MockBean
+    private CandidateTimelineService candidateTimelineService;
 
     private final UUID candidateId = UUID.randomUUID();
 
