@@ -38,6 +38,7 @@ export default async function handler(req, res) {
         contentType.includes('application/octet-stream') ||
         contentType.includes('application/zip') ||
         contentType.includes('image/') ||
+        contentType.includes('text/plain') ||
         contentType.includes('text/csv')) {
       res.setHeader('Content-Type', contentType);
       const disposition = backendResponse.headers.get('content-disposition');

@@ -79,6 +79,14 @@ function parseField(key, value) {
   return value;
 }
 
+function detectCategory(filename) {
+  const lower = (filename || '').toLowerCase();
+  if (lower.includes('censored') || lower.includes('anonym')) return 'CENSORED';
+  if (lower.includes('lebenslauf') || lower.includes('cv') || lower.includes('resume')) return 'CV';
+  if (lower.includes('zertifikat') || lower.includes('zeugnis') || lower.includes('certificate')) return 'CERTIFICATE';
+  return 'OTHER';
+}
+
 export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) {
   const originalData = useRef({ ...entity });
   const [formData, setFormData] = useState({ ...entity });
@@ -95,6 +103,15 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const [showTimelineForm, setShowTimelineForm] = useState(false);
   const [newEvent, setNewEvent] = useState({ eventType: 'CALL_NOTE', title: '', description: '' });
   const [savingEvent, setSavingEvent] = useState(false);
+
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingCategory, setPendingCategory] = useState('CV');
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
+  const [geoCoords, setGeoCoords] = useState(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState(false);
+  const geoCachedRef = useRef({});
 
   const candidateId = entity.id;
 
@@ -123,9 +140,36 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   useEffect(() => { setFormData({ ...entity }); originalData.current = { ...entity }; }, [entity]);
   useEffect(() => { fetchDocuments(); fetchTimeline(); }, [fetchDocuments, fetchTimeline]);
 
-  async function handleUpload(file) {
+  useEffect(() => {
+    const address = entity.location;
+    if (!address) { setGeoCoords(null); return; }
+    if (geoCachedRef.current[address]) {
+      setGeoCoords(geoCachedRef.current[address]);
+      return;
+    }
+    let cancelled = false;
+    setGeoLoading(true);
+    setGeoError(false);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data && data.length > 0) {
+          const coords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+          geoCachedRef.current[address] = coords;
+          setGeoCoords(coords);
+        } else {
+          setGeoError(true);
+        }
+      })
+      .catch(() => { if (!cancelled) setGeoError(true); })
+      .finally(() => { if (!cancelled) setGeoLoading(false); });
+    return () => { cancelled = true; };
+  }, [entity.location]);
+
+  async function handleUpload(file, category) {
     try {
-      await api.candidates.documents.upload(candidateId, file, file.name.endsWith('.pdf') ? 'CV' : 'CERTIFICATE');
+      await api.candidates.documents.upload(candidateId, file, category);
       fetchDocuments();
     } catch (e) {
       console.error('Upload failed:', e);
@@ -368,7 +412,9 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>PKW</span>
                         </label>
                       ) : key === 'availability' ? (
-                        <input type="date" value={formData[key] ?? ''} onChange={(e) => handleChange(key, e.target.value)}
+                        <input type="text" value={typeof formData[key] === 'string' ? formData[key] : display}
+                          placeholder="Sofort oder JJJJ-MM-TT"
+                          onChange={(e) => handleChange(key, e.target.value)}
                           onFocus={() => setFocusedField(key)} onBlur={() => setFocusedField(null)} style={inputStyle(key)} />
                       ) : (
                         <input type="text" value={typeof formData[key] === 'string' ? formData[key] : display}
@@ -388,23 +434,40 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <MapPin size={16} style={{ color: 'var(--accent)' }} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Geocodierte Adresse
+                  Geokodierte Adresse
                 </span>
               </div>
-              <div style={{
-                background: 'var(--bg-input)', borderRadius: 8, height: 120,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                border: '1px dashed var(--border)', gap: 6,
-              }}>
-                <MapPin size={28} style={{ color: 'var(--text-dim)', opacity: 0.4 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>
-                  {formData.location || entity.location || 'Keine Adresse'}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                  48.1351&deg; N, 11.5820&deg; E
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>Mini-Map Ansicht</span>
-              </div>
+              {geoLoading ? (
+                <div style={{ background: 'var(--bg-input)', borderRadius: 8, height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Adresse wird gesucht...</span>
+                </div>
+              ) : geoCoords ? (
+                <div style={{ borderRadius: 8, overflow: 'hidden', height: 250 }}>
+                  <iframe
+                    title="Karte"
+                    width="100%"
+                    height="250"
+                    frameBorder="0"
+                    scrolling="no"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${geoCoords.lon - 0.02}%2C${geoCoords.lat - 0.01}%2C${geoCoords.lon + 0.02}%2C${geoCoords.lat + 0.01}&layer=mapnik&marker=${geoCoords.lat}%2C${geoCoords.lon}`}
+                    style={{ border: 'none' }}
+                  />
+                </div>
+              ) : (
+                <div style={{
+                  background: 'var(--bg-input)', borderRadius: 8, height: 250,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  border: '1px dashed var(--border)', gap: 6,
+                }}>
+                  <MapPin size={28} style={{ color: 'var(--text-dim)', opacity: 0.4 }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>
+                    {geoError ? 'Adresse nicht gefunden' : (formData.location || entity.location || 'Keine Adresse')}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                    {geoError ? 'Bitte Adresse pr\u00fcfen' : 'Keine Koordinaten verf\u00fcgbar'}
+                  </span>
+                </div>
+              )}
             </div>
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -490,10 +553,55 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             <label style={{ cursor: 'pointer' }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
               <Upload size={13} /> Upload
               <input type="file" style={{ display: 'none' }} onChange={(e) => {
-                if (e.target.files[0]) { handleUpload(e.target.files[0]); e.target.value = ''; }
+                if (e.target.files[0]) {
+                  setPendingFile(e.target.files[0]);
+                  setPendingCategory(detectCategory(e.target.files[0].name));
+                  setShowCategoryPicker(true);
+                  e.target.value = '';
+                }
               }} />
             </label>
           </div>
+
+          {showCategoryPicker && pendingFile && (
+            <div style={{
+              marginTop: 12, padding: 14, background: 'var(--bg-input)', borderRadius: 8,
+              border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FileText size={14} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{pendingFile.name}</span>
+                <span style={{ color: 'var(--text-dim)' }}>({(pendingFile.size / 1024).toFixed(1)} KB)</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Kategorie:</span>
+                <select value={pendingCategory} onChange={(e) => setPendingCategory(e.target.value)}
+                  style={{
+                    flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    color: 'var(--text-main)', fontSize: 12, padding: '6px 10px', borderRadius: 6, outline: 'none',
+                  }}>
+                  <option value="CV" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CV (Lebenslauf)</option>
+                  <option value="CERTIFICATE" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CERTIFICATE (Zertifikat / Zeugnis)</option>
+                  <option value="CENSORED" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CENSORED (Anonymisiert)</option>
+                  <option value="OTHER" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>OTHER (Sonstiges)</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                <button onClick={() => { setShowCategoryPicker(false); setPendingFile(null); }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors">
+                  <X size={12} /> Abbrechen
+                </button>
+                <button onClick={() => {
+                  handleUpload(pendingFile, pendingCategory);
+                  setShowCategoryPicker(false);
+                  setPendingFile(null);
+                }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+                  <Upload size={12} /> Hochladen
+                </button>
+              </div>
+            </div>
+          )}
 
           {docsLoading ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Lade Dokumente...</div>
@@ -526,7 +634,8 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                       {doc.category && (
                         <span style={{
                           marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
-                          background: 'var(--accent-light)', color: 'var(--accent)',
+                          background: doc.category === 'CENSORED' ? 'rgba(5, 150, 105, 0.12)' : 'var(--accent-light)',
+                          color: doc.category === 'CENSORED' ? 'var(--success)' : 'var(--accent)',
                         }}>{doc.category}</span>
                       )}
                     </div>
