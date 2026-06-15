@@ -18,7 +18,7 @@ const FORM_CONFIGS = {
       { key: 'phone', label: 'Telefon', type: 'text' },
       { key: 'job', label: 'Beruf', type: 'text', required: true },
       { key: 'skills', label: 'F\u00E4higkeiten', type: 'text' },
-      { key: 'location', label: 'Ort', type: 'text' },
+      { key: 'location', label: 'Adresse', type: 'text' },
       { key: 'mobility', label: 'Mobilit\u00E4t', type: 'select', options: ['Ja (PKW)', 'Nein (Kein PKW)'] },
       { key: 'availability', label: 'Verf\u00FCgbarkeit', type: 'text' },
       { key: 'status', label: 'Status', type: 'select', options: ['NEW', 'IN_PROCESS', 'PLACED', 'REJECTED'] },

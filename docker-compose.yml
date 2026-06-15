@@ -51,10 +51,31 @@ services:
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       AI_SERVICE_PUBLIC_URL: ${AI_SERVICE_PUBLIC_URL}
       ALLOWED_ORIGINS: http://backend:8080,http://localhost:8080
+      DOCUMENTS_DIR: /data/candidates
+      OLLAMA_URL: http://ollama:11434
     ports:
       - "8000:8000"
+    volumes:
+      - ./appdata/documents:/data/candidates
     networks:
       - jobentra-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: crm-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - jobentra-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull qwen2.5-coder:7b
+        wait
 
   frontend:
     build:
@@ -75,6 +96,7 @@ services:
 
 volumes:
   pgdata:
+  ollama-data:
 
 networks:
   jobentra-network:

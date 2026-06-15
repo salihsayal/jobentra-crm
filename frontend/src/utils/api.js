@@ -32,6 +32,7 @@ export const api = {
   },
   candidates: {
     list(p) { return request(withParams('/candidates', p)); },
+    getById(id) { return request(`/candidates/${id}`); },
     create(b) { return request('/candidates', { method: 'POST', body: JSON.stringify(b) }); },
     update(id, b) { return request(`/candidates/${id}`, { method: 'PUT', body: JSON.stringify(b) }); },
     delete(id) { return request(`/candidates/${id}`, { method: 'DELETE' }); },

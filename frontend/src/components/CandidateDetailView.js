@@ -5,6 +5,7 @@ import {
   MessageSquare, Award, Upload, Download, Trash2, Plus, X
 } from 'lucide-react';
 import { api } from '@/utils/api';
+import { extractCity } from '@/utils/format';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -36,7 +37,7 @@ const INPUT_STYLE = {
 
 const FIELD_LABELS = {
   firstName: 'Vorname', lastName: 'Nachname', email: 'Email', phone: 'Telefon',
-  skills: 'F\u00E4higkeiten', job: 'Position', location: 'Ort',
+  skills: 'F\u00E4higkeiten', job: 'Position', location: 'Adresse',
   mobility: 'Mobilit\u00E4t', availability: 'Verf\u00FCgbarkeit', status: 'Status',
 };
 
@@ -113,6 +114,9 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const [geoError, setGeoError] = useState(false);
   const geoCachedRef = useRef({});
 
+  const [processingDoc, setProcessingDoc] = useState(false);
+  const pollTimerRef = useRef(null);
+
   const candidateId = entity.id;
 
   const fetchDocuments = useCallback(async () => {
@@ -171,8 +175,28 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
     try {
       await api.candidates.documents.upload(candidateId, file, category);
       fetchDocuments();
+      let elapsed = 0;
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = setInterval(async () => {
+        elapsed += 3;
+        fetchDocuments();
+        try {
+          const candidate = await api.candidates.getById(candidateId);
+          if (candidate && candidate.skills !== entity.skills) {
+            entity.skills = candidate.skills;
+            setFormData(prev => ({ ...prev, skills: candidate.skills }));
+            clearInterval(pollTimerRef.current);
+            setProcessingDoc(false);
+          }
+        } catch {}
+        if (elapsed >= 60) {
+          clearInterval(pollTimerRef.current);
+          setProcessingDoc(false);
+        }
+      }, 3000);
     } catch (e) {
       console.error('Upload failed:', e);
+      setProcessingDoc(false);
     }
   }
 
@@ -269,8 +293,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const skillTags = (formData.skills || entity.skills || '')
     .split(',').map(s => s.trim()).filter(Boolean);
 
-  const locationCity = (formData.location || entity.location || '')
-    .replace(/^\d{5}\s+(\S+).*/, '$1');
+  const locationCity = extractCity(formData.location || entity.location);
 
   return (
     <div>
@@ -368,7 +391,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
               Pers&ouml;nliche Daten
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-              {['firstName', 'lastName', 'email', 'phone', 'availability', 'mobility', 'job', 'status'].map(key => {
+              {['firstName', 'lastName', 'email', 'phone', 'location', 'availability', 'mobility', 'job', 'status'].map(key => {
                 const value = formData[key];
                 const display = formatField(key, value);
                 const err = validationErrors[key];
@@ -501,7 +524,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <Award size={16} style={{ color: 'var(--accent)' }} />
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                KI-extrahierte F&auml;higkeiten &amp; Zertifikate
+                 F&auml;higkeiten
               </span>
             </div>
             {skillTags.length > 0 ? (
@@ -592,8 +615,9 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                   <X size={12} /> Abbrechen
                 </button>
                 <button onClick={() => {
-                  handleUpload(pendingFile, pendingCategory);
+                  setProcessingDoc(true);
                   setShowCategoryPicker(false);
+                  handleUpload(pendingFile, pendingCategory);
                   setPendingFile(null);
                 }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
@@ -603,6 +627,24 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             </div>
           )}
 
+          {processingDoc && (
+            <div style={{
+              marginTop: 12, padding: '12px 16px', background: 'var(--bg-input)',
+              borderRadius: 8, border: '1px solid var(--card-border)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" style={{ flexShrink: 0 }}>
+                <circle cx="10" cy="10" r="8" fill="none" stroke="var(--border)" strokeWidth="2" opacity="0.3" />
+                <g>
+                  <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="0.8s" repeatCount="indefinite" />
+                  <path d="M10 2a8 8 0 0 1 8 8" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+                </g>
+              </svg>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
+                Dokument wird verarbeitet...
+              </span>
+            </div>
+          )}
           {docsLoading ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Lade Dokumente...</div>
           ) : documents.length === 0 ? (

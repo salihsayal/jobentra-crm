@@ -2,6 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-deu \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN mkdir -p /app/generated
 
 COPY requirements.txt .

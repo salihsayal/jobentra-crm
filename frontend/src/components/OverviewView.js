@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import StatsCharts from './StatsCharts';
 import DataTable from './DataTable';
 import CreateSlideOver from './CreateSlideOver';
+import { extractCity } from '@/utils/format';
 
 const STATUS_COLORS = {
   ACTIVE: { bg: 'rgba(52,211,153,0.12)', text: '#34d399' }, INACTIVE: { bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' }, LEAD: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -27,9 +28,18 @@ const TABLE_COLUMNS = {
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{row.job || '-'}</div>
       </div>
     )},
-    { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => <span style={{ fontSize: 12, maxWidth: 180, display: 'inline-block', whiteSpace: 'normal', lineHeight: 1.4 }}>{v || '-'}</span> },
+    { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => {
+      const skills = (v || '').split(',').map(s => s.trim()).filter(Boolean);
+      const shown = skills.slice(0, 3);
+      const remaining = skills.length - 3;
+      return (
+        <span style={{ fontSize: 12, maxWidth: 200, display: 'inline-block', whiteSpace: 'normal', lineHeight: 1.5 }}>
+          {shown.join(', ')}{remaining > 0 ? <span style={{ color: 'var(--text-dim)', fontSize: 11 }}> +{remaining} weitere</span> : ''}
+        </span>
+      );
+    }},
     { key: 'location', label: 'Ort', render: (v, row) => {
-      const city = v ? v.replace(/^\d{5}\s+(\S+).*/, '$1') : null;
+      const city = extractCity(v);
       return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span>{city || '-'}</span>

@@ -76,10 +76,21 @@ export default function Login() {
           disabled={loading || !ready}
           style={{
             width: '100%', padding: '10px', borderRadius: 6, fontSize: 14, fontWeight: 600,
-            background: 'var(--accent)', color: '#fff', border: 'none', cursor: (loading || !ready) ? 'not-allowed' : 'pointer',
+            background: 'var(--accent)', color: '#fff', border: 'none',
+            cursor: (loading || !ready) ? 'not-allowed' : 'pointer',
             opacity: (loading || !ready) ? 0.6 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
+          {(loading || !ready) && (
+            <svg width="16" height="16" viewBox="0 0 20 20" style={{ flexShrink: 0 }}>
+              <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="0.7s" repeatCount="indefinite" />
+                <path d="M10 2a8 8 0 0 1 8 8" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+              </g>
+            </svg>
+          )}
           {!ready ? 'Connecting...' : loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
