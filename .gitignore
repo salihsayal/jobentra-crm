@@ -47,3 +47,4 @@ ai-service/venv/
 logs/
 
 *.pdf
+appdata/documents/
