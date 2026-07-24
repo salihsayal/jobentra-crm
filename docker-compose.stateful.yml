@@ -9,7 +9,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Geändert auf ein lokales Verzeichnis (Bind-Mount)
+      - ./pgdata:/var/lib/postgresql/data
     networks:
       - jobentra-network
     healthcheck:
@@ -18,9 +19,8 @@ services:
       timeout: 5s
       retries: 5
 
-volumes:
-  pgdata:
-
 networks:
   jobentra-network:
     name: jobentra-network
+
+# Den separaten "volumes:" Block unten kannst du komplett löschen!
