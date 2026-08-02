@@ -112,6 +112,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState(false);
   const geoCachedRef = useRef({});
+  const [newSkill, setNewSkill] = useState('');
 
   const candidateId = entity.id;
 
@@ -254,6 +255,24 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
 
   function handleCancel() {
     setFormData({ ...originalData.current });
+  }
+
+  function handleAddSkill() {
+    const trimmed = newSkill.trim();
+    if (!trimmed) return;
+    const currentSkills = String(formData.skills || '').trim();
+    const existingTags = currentSkills ? currentSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (existingTags.includes(trimmed)) { setNewSkill(''); return; }
+    const newSkills = [...existingTags, trimmed].join(', ');
+    setFormData(prev => ({ ...prev, skills: newSkills }));
+    setNewSkill('');
+  }
+
+  function handleRemoveSkill(tag) {
+    const currentSkills = String(formData.skills || '').trim();
+    const existingTags = currentSkills ? currentSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const newSkills = existingTags.filter(t => t !== tag).join(', ');
+    setFormData(prev => ({ ...prev, skills: newSkills }));
   }
 
   function inputStyle(key) {
@@ -501,8 +520,30 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <Award size={16} style={{ color: 'var(--accent)' }} />
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                KI-extrahierte F&auml;higkeiten &amp; Zertifikate
+                F&auml;higkeiten
               </span>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }}
+                  placeholder="Neue Fähigkeit hinzufügen..."
+                  style={{
+                    flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)',
+                    color: 'var(--text-main)', fontSize: 12, padding: '6px 10px', borderRadius: 6,
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={handleAddSkill}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                >
+                  <Plus size={13} /> Hinzufügen
+                </button>
+              </div>
             </div>
             {skillTags.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -513,6 +554,17 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                     background: 'var(--accent-light)', color: 'var(--accent)',
                   }}>
                     {tag}
+                    <button
+                      onClick={() => handleRemoveSkill(tag)}
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: 'var(--accent)', padding: 0, display: 'inline-flex',
+                        marginLeft: 2, opacity: 0.6,
+                      }}
+                      className="hover:opacity-100"
+                    >
+                      <X size={12} />
+                    </button>
                   </span>
                 ))}
               </div>
@@ -520,7 +572,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
                 <GraduationCap size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
                 <div>Keine F&auml;higkeiten hinterlegt.</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>F&uuml;ge &quot;Skills&quot; im Info-Tab hinzu, um sie hier anzuzeigen.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Füge neue Fähigkeiten über das Eingabefeld hinzu.</div>
               </div>
             )}
           </div>
@@ -531,11 +583,48 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                 Zertifikate
               </span>
             </div>
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
-              <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
-              <div>Keine Zertifikate hinterlegt.</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
-            </div>
+            {documents.filter(d => d.category === 'CERTIFICATE').length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {documents.filter(d => d.category === 'CERTIFICATE').map((doc, i, arr) => (
+                  <div key={doc.id || i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: 'var(--accent-light)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <FileText size={14} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {doc.originalFilename || doc.filename}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        {formatDate(doc.createdAt)} &middot; {formatFileSize(doc.fileSize)}
+                      </div>
+                    </div>
+                    <a
+                      href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
+                      download={doc.originalFilename}
+                      style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                      className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
+                      title="Herunterladen"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
+                <div>Keine Zertifikate hinterlegt.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
+              </div>
+            )}
           </div>
         </div>
       )}

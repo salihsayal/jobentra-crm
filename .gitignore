@@ -45,3 +45,4 @@ ai-service/venv/
 # --- Logs ---
 *.log
 logs/
+appdata/
