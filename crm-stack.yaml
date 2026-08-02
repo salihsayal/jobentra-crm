@@ -51,6 +51,8 @@ spec:
       labels:
         app: ai-service
     spec:
+      imagePullSecrets:
+      - name: gitea-registry-secret
       containers:
       - name: ai-service
         image: git.ad.jobentra.de/salih/crm-ai-service:2989b20
@@ -96,6 +98,8 @@ spec:
       labels:
         app: backend
     spec:
+      imagePullSecrets:
+      - name: gitea-registry-secret
       containers:
       - name: backend
         image: git.ad.jobentra.de/salih/crm-backend:2989b20
@@ -166,6 +170,8 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+      - name: gitea-registry-secret
       containers:
       - name: frontend
         image: git.ad.jobentra.de/salih/crm-frontend:2989b20
