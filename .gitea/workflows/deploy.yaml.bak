@@ -9,7 +9,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
-      # Deaktiviert die SSL-Prüfung für Git-Checkouts und Node.js im Runner
       GIT_SSL_NO_VERIFY: "true"
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
     steps:
@@ -53,6 +52,5 @@ jobs:
           sed -i "s|git.ad.jobentra.de/salih/crm-frontend:.*|git.ad.jobentra.de/salih/crm-frontend:$IMAGE_TAG|g" crm-stack.yaml
           
           git add crm-stack.yaml
-          # [skip ci] ist extrem wichtig, damit dieser Commit die Pipeline nicht in einer Endlosschleife neu startet!
           git commit -m "ci: update image tags to $IMAGE_TAG [skip ci]"
           git push https://${{ secrets.GITHUB_TOKEN }}@git.ad.jobentra.de/salih/jobentra-crm.git prod
