@@ -53,7 +53,7 @@ spec:
     spec:
       containers:
       - name: ai-service
-        image: git.ad.jobentra.de/salih/crm-ai-service:a3edcb5
+        image: git.ad.jobentra.de/salih/crm-ai-service:2989b20
         ports:
         - containerPort: 8000
         env:
@@ -98,7 +98,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: git.ad.jobentra.de/salih/crm-backend:a3edcb5
+        image: git.ad.jobentra.de/salih/crm-backend:2989b20
         ports:
         - containerPort: 8080
         env:
@@ -168,7 +168,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: git.ad.jobentra.de/salih/crm-frontend:a3edcb5
+        image: git.ad.jobentra.de/salih/crm-frontend:2989b20
         ports:
         - containerPort: 3000
         env:
