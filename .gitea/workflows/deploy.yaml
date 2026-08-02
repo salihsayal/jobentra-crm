@@ -16,6 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Trust internal NPM Wildcard Certificate
+        run: |
+          echo "Lade *.ad.jobentra.de Zertifikat von NPM herunter..."
+          openssl s_client -showcerts -servername git.ad.jobentra.de -connect git.ad.jobentra.de:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > npm-cert.crt
+          echo "Installiere Zertifikat im Ubuntu Trust-Store..."
+          sudo cp npm-cert.crt /usr/local/share/ca-certificates/npm-cert.crt
+          sudo update-ca-certificates
+
       - name: Log in to Gitea Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login git.ad.jobentra.de -u "${{ github.actor }}" --password-stdin
