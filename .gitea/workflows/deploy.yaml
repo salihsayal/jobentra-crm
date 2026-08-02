@@ -1,0 +1,53 @@
+name: Build and Deploy CRM
+
+on:
+  push:
+    branches:
+      - prod
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Gitea Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login git.ad.jobentra.de -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and Push AI Service
+        run: |
+          IMAGE_TAG=$(git rev-parse --short HEAD)
+          docker build -t git.ad.jobentra.de/salih/crm-ai-service:$IMAGE_TAG -t git.ad.jobentra.de/salih/crm-ai-service:latest ./ai-service
+          docker push git.ad.jobentra.de/salih/crm-ai-service:$IMAGE_TAG
+          docker push git.ad.jobentra.de/salih/crm-ai-service:latest
+
+      - name: Build and Push Backend
+        run: |
+          IMAGE_TAG=$(git rev-parse --short HEAD)
+          docker build -t git.ad.jobentra.de/salih/crm-backend:$IMAGE_TAG -t git.ad.jobentra.de/salih/crm-backend:latest ./backend
+          docker push git.ad.jobentra.de/salih/crm-backend:$IMAGE_TAG
+          docker push git.ad.jobentra.de/salih/crm-backend:latest
+
+      - name: Build and Push Frontend
+        run: |
+          IMAGE_TAG=$(git rev-parse --short HEAD)
+          docker build -t git.ad.jobentra.de/salih/crm-frontend:$IMAGE_TAG -t git.ad.jobentra.de/salih/crm-frontend:latest ./frontend
+          docker push git.ad.jobentra.de/salih/crm-frontend:$IMAGE_TAG
+          docker push git.ad.jobentra.de/salih/crm-frontend:latest
+
+      - name: Update Kubernetes Manifest with new Tag
+        run: |
+          IMAGE_TAG=$(git rev-parse --short HEAD)
+          git config --global user.name "Gitea Actions Bot"
+          git config --global user.email "actions@git.ad.jobentra.de"
+          
+          # Image-Tags in der crm-stack.yaml automatisch aktualisieren
+          sed -i "s|git.ad.jobentra.de/salih/crm-ai-service:.*|git.ad.jobentra.de/salih/crm-ai-service:$IMAGE_TAG|g" crm-stack.yaml
+          sed -i "s|git.ad.jobentra.de/salih/crm-backend:.*|git.ad.jobentra.de/salih/crm-backend:$IMAGE_TAG|g" crm-stack.yaml
+          sed -i "s|git.ad.jobentra.de/salih/crm-frontend:.*|git.ad.jobentra.de/salih/crm-frontend:$IMAGE_TAG|g" crm-stack.yaml
+          
+          git add crm-stack.yaml
+          git commit -m "ci: update image tags to $IMAGE_TAG [skip ci]"
+          git push https://${{ secrets.GITHUB_TOKEN }}@git.ad.jobentra.de/salih/jobentra-crm.git prod
