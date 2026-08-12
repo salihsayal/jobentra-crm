@@ -63,6 +63,7 @@ services:
     container_name: crm-frontend
     environment:
       BACKEND_URL: http://backend:8080
+      ALLOWED_DEV_ORIGINS: ${ALLOWED_DEV_ORIGINS:-localhost:3000,127.0.0.1:3000}
     ports:
       - "3000:3000"
     volumes:

@@ -1,13 +1,16 @@
-import { useState, useCallback, useEffect, useReducer } from 'react';
+import { useState, useCallback, useEffect, useReducer, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Topbar from '@/components/Topbar';
 import Sidebar from '@/components/Sidebar';
 import Canvas from '@/components/Canvas';
 import { ToastProvider, showToast } from '@/components/Toast';
 import { toggleTheme as toggleThemeUtil, getStoredTheme } from '@/utils/theme';
-import { api } from '@/utils/api';
+import { api, setAuthRedirect } from '@/utils/api';
 
 const INITIAL = { customers: [], candidates: [], jobs: [], billings: [] };
+
+const AUTH_RETRY_MAX = 3;
+const AUTH_RETRY_MS = 1000;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -19,8 +22,14 @@ export default function Dashboard() {
   const [data, setData] = useState(INITIAL);
   const [dataVersion, refreshData] = useReducer(x => x + 1, 0);
   const [loading, setLoading] = useState(true);
+  const authPendingRef = useRef(false);
 
   useEffect(() => { setTheme(getStoredTheme()); }, []);
+
+  useEffect(() => {
+    setAuthRedirect(() => router.push('/'));
+    return () => setAuthRedirect(null);
+  }, [router]);
 
   useEffect(() => {
     async function loadAll() {
@@ -44,14 +53,34 @@ export default function Dashboard() {
   }, [dataVersion]);
 
   useEffect(() => {
-    async function checkAuth() {
+    if (authPendingRef.current) return;
+
+    async function checkAuth(attempt = 0) {
       try {
         const res = await fetch('/api/customers?size=1', { credentials: 'include' });
-        if (!res.ok) router.push('/');
-      } catch { router.push('/'); }
+        if (res.ok) return;
+        if (res.status === 401 || res.status === 403) {
+          showToast('Session expired. Please log in again.');
+          router.push('/');
+          return;
+        }
+        if (attempt < AUTH_RETRY_MAX) {
+          await new Promise(r => setTimeout(r, AUTH_RETRY_MS * (attempt + 1)));
+          return checkAuth(attempt + 1);
+        }
+        showToast('Backend temporarily unreachable. Retrying...');
+      } catch {
+        if (attempt < AUTH_RETRY_MAX) {
+          await new Promise(r => setTimeout(r, AUTH_RETRY_MS * (attempt + 1)));
+          return checkAuth(attempt + 1);
+        }
+        showToast('Unable to reach backend. Please check your connection.');
+      }
     }
-    checkAuth();
-  }, [router]);
+
+    authPendingRef.current = true;
+    checkAuth().finally(() => { authPendingRef.current = false; });
+  }, []);
 
   const handleToggleTheme = useCallback(() => setTheme(prev => toggleThemeUtil(prev)), []);
   const handleNavigate = useCallback((view) => { setCurrentView(view); setSelectedEntity(null); }, []);

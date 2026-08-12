@@ -6,7 +6,7 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     const mode = getStoredTheme();
     applyTheme(mode);
-    fetch('/api/customers?size=1').catch(() => {});
+    fetch('/api/customers?size=1', { credentials: 'include' }).catch(() => {});
   }, []);
 
   return <Component {...pageProps} />;
