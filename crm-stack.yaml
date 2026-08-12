@@ -55,7 +55,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: ai-service
-        image: git.ad.jobentra.de/salih/crm-ai-service:8cf8371
+        image: git.ad.jobentra.de/salih/crm-ai-service:latest
         ports:
         - containerPort: 8000
         env:
@@ -102,7 +102,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: backend
-        image: git.ad.jobentra.de/salih/crm-backend:8cf8371
+        image: git.ad.jobentra.de/salih/crm-backend:latest
         ports:
         - containerPort: 8080
         env:
@@ -174,12 +174,17 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: frontend
-        image: git.ad.jobentra.de/salih/crm-frontend:8cf8371
+        image: git.ad.jobentra.de/salih/crm-frontend:latest
         ports:
         - containerPort: 3000
         env:
         - name: BACKEND_URL
           value: "http://backend:8080"
+        - name: ALLOWED_DEV_ORIGINS
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: ALLOWED_DEV_ORIGINS
 ---
 apiVersion: v1
 kind: Service
@@ -195,7 +200,7 @@ spec:
       targetPort: 3000
 ---
 # ==========================================
-# 4. INGRESS (Das Routing von außen)
+# 4. INGRESS
 # ==========================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
