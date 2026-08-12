@@ -1,11 +1,32 @@
 const BASE = '/api';
 
+let _authRedirect = null;
+
+export function setAuthRedirect(fn) {
+  _authRedirect = fn;
+}
+
+function handleAuthExpired() {
+  if (typeof window !== 'undefined') {
+    import('@/components/Toast').then(({ showToast }) => {
+      showToast('Session expired. Please log in again.');
+    });
+  }
+  if (_authRedirect) {
+    setTimeout(() => _authRedirect(), 1500);
+  }
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   });
+  if (res.status === 401 || res.status === 403) {
+    handleAuthExpired();
+    throw new Error('Session expired');
+  }
   if (res.status === 204) return null;
   const text = await res.text();
   if (!text) return null;
