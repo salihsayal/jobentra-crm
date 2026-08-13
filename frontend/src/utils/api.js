@@ -1,9 +1,10 @@
 const BASE = '/api';
 
 let _authRedirect = null;
+let _redirectScheduled = false;
 
 export function setAuthRedirect(fn) {
-  _authRedirect = fn;
+  _authRedirect = typeof fn === 'function' ? fn : null;
 }
 
 function handleAuthExpired() {
@@ -12,9 +13,16 @@ function handleAuthExpired() {
       showToast('Session expired. Please log in again.');
     });
   }
-  if (_authRedirect) {
-    setTimeout(() => _authRedirect(), 1500);
-  }
+  if (_redirectScheduled) return;
+  _redirectScheduled = true;
+  setTimeout(() => {
+    _redirectScheduled = false;
+    if (typeof _authRedirect === 'function') {
+      _authRedirect();
+    } else {
+      window.location.href = '/';
+    }
+  }, 1500);
 }
 
 async function request(path, options = {}) {
