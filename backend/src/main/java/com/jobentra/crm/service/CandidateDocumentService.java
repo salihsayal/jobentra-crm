@@ -23,14 +23,17 @@ public class CandidateDocumentService {
 
     private final CandidateDocumentRepository documentRepository;
     private final CandidateRepository candidateRepository;
+    private final CvExtractionService cvExtractionService;
     private final Path basePath;
 
     public CandidateDocumentService(
             CandidateDocumentRepository documentRepository,
             CandidateRepository candidateRepository,
+            CvExtractionService cvExtractionService,
             @Value("${candidate.files.path:/data/candidates}") String basePath) {
         this.documentRepository = documentRepository;
         this.candidateRepository = candidateRepository;
+        this.cvExtractionService = cvExtractionService;
         this.basePath = Paths.get(basePath);
     }
 
@@ -67,7 +70,15 @@ public class CandidateDocumentService {
         doc.setMimeType(file.getContentType());
         doc.setCategory(category != null && !category.isBlank() ? category : "OTHER");
 
-        return documentRepository.save(doc);
+        CandidateDocument saved = documentRepository.save(doc);
+
+        if ("CV".equalsIgnoreCase(saved.getCategory())) {
+            saved.setExtractionStatus("PENDING");
+            saved = documentRepository.save(saved);
+            cvExtractionService.processDocument(candidateId, saved.getId());
+        }
+
+        return saved;
     }
 
     public Resource downloadDocument(UUID candidateId, UUID documentId) {

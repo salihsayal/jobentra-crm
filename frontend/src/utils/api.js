@@ -61,11 +61,18 @@ export const api = {
   },
   candidates: {
     list(p) { return request(withParams('/candidates', p)); },
+    get(id) { return request(`/candidates/${id}`); },
     create(b) { return request('/candidates', { method: 'POST', body: JSON.stringify(b) }); },
     update(id, b) { return request(`/candidates/${id}`, { method: 'PUT', body: JSON.stringify(b) }); },
     delete(id) { return request(`/candidates/${id}`, { method: 'DELETE' }); },
     archive(id) { return request(`/candidates/${id}/archive`, { method: 'PATCH' }); },
     unarchive(id) { return request(`/candidates/${id}/unarchive`, { method: 'PATCH' }); },
+    workExperience: {
+      list(candidateId) { return request(`/candidates/${candidateId}/work-experience`); },
+      create(candidateId, b) { return request(`/candidates/${candidateId}/work-experience`, { method: 'POST', body: JSON.stringify(b) }); },
+      update(candidateId, entryId, b) { return request(`/candidates/${candidateId}/work-experience/${entryId}`, { method: 'PUT', body: JSON.stringify(b) }); },
+      delete(candidateId, entryId) { return request(`/candidates/${candidateId}/work-experience/${entryId}`, { method: 'DELETE' }); },
+    },
     documents: {
       list(candidateId) { return request(`/candidates/${candidateId}/documents`); },
       upload(candidateId, file, category) {

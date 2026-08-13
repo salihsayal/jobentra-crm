@@ -2,9 +2,10 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, FileText, ShieldOff, Check, Undo2, MapPin, Calendar,
   User, Mail, Phone, Briefcase, GraduationCap, FolderOpen, Clock,
-  MessageSquare, Award, Upload, Download, Trash2, Plus, X
+  MessageSquare, Award, Upload, Download, Trash2, Plus, X, Pencil
 } from 'lucide-react';
 import { api } from '@/utils/api';
+import { showToast } from '@/components/Toast';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -32,6 +33,12 @@ const INPUT_STYLE = {
   background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: 13,
   fontWeight: 600, textAlign: 'right', width: '100%', padding: '2px 4px', borderRadius: 4,
   outline: 'none', cursor: 'text', transition: 'background 0.15s ease, border-color 0.15s ease',
+};
+
+const WE_INPUT_STYLE = {
+  background: 'var(--bg-card)', border: '1px solid var(--border)',
+  color: 'var(--text-main)', fontSize: 12, padding: '6px 10px', borderRadius: 6,
+  outline: 'none', minWidth: 0,
 };
 
 const FIELD_LABELS = {
@@ -87,7 +94,7 @@ function detectCategory(filename) {
   return 'OTHER';
 }
 
-export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) {
+export default function CandidateDetailView({ entity, onBack, onEntityUpdate, onDataRefresh }) {
   const originalData = useRef({ ...entity });
   const [formData, setFormData] = useState({ ...entity });
   const [focusedField, setFocusedField] = useState(null);
@@ -114,6 +121,14 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const geoCachedRef = useRef({});
   const [newSkill, setNewSkill] = useState('');
 
+  const [workExperiences, setWorkExperiences] = useState([]);
+  const [weLoading, setWeLoading] = useState(false);
+  const [showWeForm, setShowWeForm] = useState(false);
+  const [weForm, setWeForm] = useState({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+  const [editingWeId, setEditingWeId] = useState(null);
+  const [editingWeForm, setEditingWeForm] = useState({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+  const [savingWe, setSavingWe] = useState(false);
+
   const candidateId = entity.id;
 
   const fetchDocuments = useCallback(async () => {
@@ -138,8 +153,19 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
     setTimelineLoading(false);
   }, [candidateId]);
 
+  const fetchWorkExperience = useCallback(async () => {
+    setWeLoading(true);
+    try {
+      const entries = await api.candidates.workExperience.list(candidateId);
+      setWorkExperiences(Array.isArray(entries) ? entries : []);
+    } catch (e) {
+      console.error('Failed to fetch work experience:', e);
+    }
+    setWeLoading(false);
+  }, [candidateId]);
+
   useEffect(() => { setFormData({ ...entity }); originalData.current = { ...entity }; }, [entity]);
-  useEffect(() => { fetchDocuments(); fetchTimeline(); }, [fetchDocuments, fetchTimeline]);
+  useEffect(() => { fetchDocuments(); fetchTimeline(); fetchWorkExperience(); }, [fetchDocuments, fetchTimeline, fetchWorkExperience]);
 
   useEffect(() => {
     const address = entity.location;
@@ -170,10 +196,107 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
 
   async function handleUpload(file, category) {
     try {
-      await api.candidates.documents.upload(candidateId, file, category);
+      const savedDoc = await api.candidates.documents.upload(candidateId, file, category);
       fetchDocuments();
+      if (category === 'CV' && savedDoc && savedDoc.id) {
+        pollExtractionStatus(savedDoc.id);
+      }
     } catch (e) {
       console.error('Upload failed:', e);
+      showToast('Upload fehlgeschlagen: ' + e.message);
+    }
+  }
+
+  async function pollExtractionStatus(documentId) {
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(r => setTimeout(r, 2500));
+      try {
+        const docs = await api.candidates.documents.list(candidateId);
+        const docsList = Array.isArray(docs) ? docs : [];
+        const doc = docsList.find(d => d.id === documentId);
+        if (doc && doc.extractionStatus === 'DONE') {
+          showToast('CV ausgewertet – Fähigkeiten und Arbeitserfahrung aktualisiert.', 'success');
+          await refreshCandidateAfterExtraction();
+          return;
+        }
+        if (doc && doc.extractionStatus === 'FAILED') {
+          showToast('CV-Analyse fehlgeschlagen. Bitte Daten manuell pflegen.');
+          return;
+        }
+      } catch (e) {
+        console.error('Extraction polling failed:', e);
+      }
+    }
+    showToast('CV-Analyse dauert länger als erwartet. Ergebnisse erscheinen sobald verfügbar.');
+  }
+
+  async function refreshCandidateAfterExtraction() {
+    try {
+      const fresh = await api.candidates.get(candidateId);
+      Object.keys(fresh).forEach(k => { if (k in entity) entity[k] = fresh[k]; });
+      originalData.current = { ...entity };
+      setFormData({ ...entity });
+      fetchWorkExperience();
+      if (onDataRefresh) onDataRefresh();
+    } catch (e) {
+      console.error('Failed to refresh candidate after extraction:', e);
+    }
+  }
+
+  function openWeForm() {
+    setWeForm({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+    setShowWeForm(true);
+  }
+
+  async function handleCreateWorkExperience() {
+    if (!weForm.jobTitle.trim()) return;
+    setSavingWe(true);
+    try {
+      await api.candidates.workExperience.create(candidateId, weForm);
+      setWeForm({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+      setShowWeForm(false);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to create work experience:', e);
+      showToast('Speichern fehlgeschlagen: ' + e.message);
+    }
+    setSavingWe(false);
+  }
+
+  function startEditingWe(entry) {
+    setEditingWeId(entry.id);
+    setEditingWeForm({
+      jobTitle: entry.jobTitle || '',
+      company: entry.company || '',
+      startDate: entry.startDate || '',
+      endDate: entry.endDate || '',
+      description: entry.description || '',
+    });
+  }
+
+  async function handleUpdateWorkExperience() {
+    if (!editingWeForm.jobTitle.trim()) return;
+    setSavingWe(true);
+    try {
+      await api.candidates.workExperience.update(candidateId, editingWeId, editingWeForm);
+      setEditingWeId(null);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to update work experience:', e);
+      showToast('Speichern fehlgeschlagen: ' + e.message);
+    }
+    setSavingWe(false);
+  }
+
+  async function handleDeleteWorkExperience(entryId) {
+    try {
+      await api.candidates.workExperience.delete(candidateId, entryId);
+      if (editingWeId === entryId) setEditingWeId(null);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to delete work experience:', e);
+      showToast('Löschen fehlgeschlagen: ' + e.message);
     }
   }
 
@@ -626,10 +749,152 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
               </div>
             )}
           </div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Briefcase size={16} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Arbeitserfahrung
+                </span>
+              </div>
+              {!showWeForm && (
+                <button
+                  onClick={openWeForm}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                >
+                  <Plus size={13} /> Hinzufügen
+                </button>
+              )}
+            </div>
+
+            {showWeForm && (
+              <div style={{ marginBottom: 16, padding: 14, background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <input type="text" placeholder="Position / Jobtitel" value={weForm.jobTitle}
+                    onChange={e => setWeForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Unternehmen" value={weForm.company}
+                    onChange={e => setWeForm(prev => ({ ...prev, company: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Start (z.B. 03.2020)" value={weForm.startDate}
+                    onChange={e => setWeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Ende (z.B. heute)" value={weForm.endDate}
+                    onChange={e => setWeForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                </div>
+                <textarea placeholder="Aufgaben & Verantwortlichkeiten" value={weForm.description}
+                  onChange={e => setWeForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  style={{ ...WE_INPUT_STYLE, width: '100%', resize: 'vertical', marginBottom: 8 }} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                  <button onClick={() => setShowWeForm(false)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors">
+                    Abbrechen
+                  </button>
+                  <button onClick={handleCreateWorkExperience} disabled={savingWe || !weForm.jobTitle.trim()}
+                    style={{ opacity: savingWe || !weForm.jobTitle.trim() ? 0.5 : 1 }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+                    <Check size={13} /> Speichern
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {weLoading ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Lade Arbeitserfahrung...</div>
+            ) : workExperiences.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                <Briefcase size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
+                <div>Keine Arbeitserfahrung hinterlegt.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Lade einen CV im Vault-Tab hoch, um diese automatisch auszufüllen.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {workExperiences.map((entry, i) => (
+                  <div key={entry.id || i} style={{
+                    background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px',
+                    border: editingWeId === entry.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  }}>
+                    {editingWeId === entry.id ? (
+                      <div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                          <input type="text" placeholder="Position / Jobtitel" value={editingWeForm.jobTitle}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Unternehmen" value={editingWeForm.company}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, company: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Start" value={editingWeForm.startDate}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Ende" value={editingWeForm.endDate}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, endDate: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                        </div>
+                        <textarea placeholder="Aufgaben & Verantwortlichkeiten" value={editingWeForm.description}
+                          onChange={e => setEditingWeForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={3}
+                          style={{ ...WE_INPUT_STYLE, width: '100%', resize: 'vertical', marginBottom: 8 }} />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <button onClick={() => setEditingWeId(null)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors">
+                            Abbrechen
+                          </button>
+                          <button onClick={handleUpdateWorkExperience} disabled={savingWe || !editingWeForm.jobTitle.trim()}
+                            style={{ opacity: savingWe || !editingWeForm.jobTitle.trim() ? 0.5 : 1 }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+                            <Check size={13} /> Speichern
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)' }}>
+                              {entry.jobTitle || '-'}
+                              {entry.company && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> &middot; {entry.company}</span>}
+                            </div>
+                            {(entry.startDate || entry.endDate) && (
+                              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                                {entry.startDate || '?'} – {entry.endDate || 'heute'}
+                              </div>
+                            )}
+                            {entry.description && (
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                                {entry.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                            <button
+                              onClick={() => startEditingWe(entry)}
+                              style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                              className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
+                              title="Bearbeiten"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWorkExperience(entry.id)}
+                              style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                              className="hover:text-app-danger hover:bg-app-bg-hover transition-colors"
+                              title="L\u00f6schen"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Vault Tab */}
       {activeTab === 'vault' && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

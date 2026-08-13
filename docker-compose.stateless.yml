@@ -29,6 +29,9 @@ services:
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       AI_SERVICE_PUBLIC_URL: ${AI_SERVICE_PUBLIC_URL}
       ALLOWED_ORIGINS: http://backend:8080,http://localhost:8080
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
     ports:
       - "8000:8000"
     networks:

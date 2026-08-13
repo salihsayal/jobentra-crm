@@ -155,6 +155,7 @@ export default function Dashboard() {
             onBulkUnarchive={(ids) => handleBulkUnarchive(V2E[currentView], ids)}
             onBulkDelete={(ids) => handleBulkDelete(V2E[currentView], ids)}
             onEntityUpdate={handleEntityUpdate}
+            onDataRefresh={refreshData}
           />
         </main>
       </div>

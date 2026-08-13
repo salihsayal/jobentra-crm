@@ -9,10 +9,10 @@ function StatusBadge({ status }) {
   return <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500, background: s.bg, color: s.text }}>{status}</span>;
 }
 
-export default function Canvas({ currentView, omniResults, selectedEntity, onRowClick, onBack, onOmniSelect, allData, getEntityData, onCreate, onBulkArchive, onBulkUnarchive, onBulkDelete, onEntityUpdate }) {
+export default function Canvas({ currentView, omniResults, selectedEntity, onRowClick, onBack, onOmniSelect, allData, getEntityData, onCreate, onBulkArchive, onBulkUnarchive, onBulkDelete, onEntityUpdate, onDataRefresh }) {
   if (selectedEntity) {
     if (selectedEntity.type === 'candidate') {
-      return <CandidateDetailView entity={selectedEntity.data} onBack={onBack} onEntityUpdate={onEntityUpdate} />;
+      return <CandidateDetailView entity={selectedEntity.data} onBack={onBack} onEntityUpdate={onEntityUpdate} onDataRefresh={onDataRefresh} />;
     }
     return <DetailView entity={selectedEntity.data} entityType={selectedEntity.type} onBack={onBack} onEntityUpdate={onEntityUpdate} />;
   }
