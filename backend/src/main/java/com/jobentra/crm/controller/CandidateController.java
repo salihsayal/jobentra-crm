@@ -136,6 +136,25 @@ public class CandidateController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/{candidateId}/profile-pdf")
+    public ResponseEntity<?> generateProfilePdf(@PathVariable UUID candidateId,
+                                                @RequestBody Map<String, Object> profileData) {
+        try {
+            candidateService.getCandidateById(candidateId)
+                    .orElseThrow(() -> new RuntimeException("Candidate not found: " + candidateId));
+            byte[] pdf = aiServiceClient.renderProfilePdf(profileData);
+            String fileName = profileData.get("fileName") != null
+                    ? String.valueOf(profileData.get("fileName"))
+                    : "Kandidaten-Profil.pdf";
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(pdf);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         try {
@@ -189,20 +208,41 @@ public class CandidateController {
     }
 
     @GetMapping("/{id}/documents/{docId}")
-    public ResponseEntity<?> downloadDocument(@PathVariable UUID id, @PathVariable UUID docId) {
+    public ResponseEntity<?> downloadDocument(@PathVariable UUID id,
+                                               @PathVariable UUID docId,
+                                               @RequestParam(defaultValue = "false") boolean inline) {
         try {
             Resource resource = documentService.downloadDocument(id, docId);
             CandidateDocument doc = documentService.listDocuments(id).stream()
                     .filter(d -> d.getId().equals(docId))
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("Document not found"));
+            String disposition = (inline ? "inline" : "attachment") + "; filename=\"" + doc.getOriginalFilename() + "\"";
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(doc.getMimeType() != null ? doc.getMimeType() : "application/octet-stream"))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getOriginalFilename() + "\"")
+                    .contentType(MediaType.parseMediaType(resolveMimeType(doc)))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                     .body(resource);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private String resolveMimeType(CandidateDocument doc) {
+        String mime = doc.getMimeType();
+        if (mime == null || mime.isBlank() || "application/octet-stream".equalsIgnoreCase(mime)) {
+            String name = doc.getOriginalFilename() != null
+                    ? doc.getOriginalFilename().toLowerCase()
+                    : doc.getFilename() != null ? doc.getFilename().toLowerCase() : "";
+            if (name.endsWith(".pdf")) return "application/pdf";
+            if (name.endsWith(".png")) return "image/png";
+            if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+            if (name.endsWith(".gif")) return "image/gif";
+            if (name.endsWith(".webp")) return "image/webp";
+            if (name.endsWith(".txt")) return "text/plain";
+            if (name.endsWith(".csv")) return "text/csv";
+            if (name.endsWith(".md")) return "text/markdown";
+        }
+        return mime != null && !mime.isBlank() ? mime : "application/octet-stream";
     }
 
     @DeleteMapping("/{id}/documents/{docId}")

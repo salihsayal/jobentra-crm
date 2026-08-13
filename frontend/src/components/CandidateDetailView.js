@@ -1,12 +1,13 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
-  ArrowLeft, FileText, ShieldOff, Check, Undo2, MapPin, Calendar,
+  ArrowLeft, FileText, Check, Undo2, MapPin, Calendar,
   User, Mail, Phone, Briefcase, GraduationCap, FolderOpen, Clock,
   MessageSquare, Award, Upload, Download, Trash2, Plus, X, Pencil
 } from 'lucide-react';
 import { api } from '@/utils/api';
 import { showToast } from '@/components/Toast';
-import { parseAddress } from '@/utils/format';
+import { parseAddress, sortWorkExperience } from '@/utils/format';
+import CandidateProfileModal from './CandidateProfileModal';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -91,10 +92,18 @@ function parseField(key, value) {
 
 function detectCategory(filename) {
   const lower = (filename || '').toLowerCase();
-  if (lower.includes('censored') || lower.includes('anonym')) return 'CENSORED';
   if (lower.includes('lebenslauf') || lower.includes('cv') || lower.includes('resume')) return 'CV';
   if (lower.includes('zertifikat') || lower.includes('zeugnis') || lower.includes('certificate')) return 'CERTIFICATE';
   return 'OTHER';
+}
+
+function getPreviewKind(doc) {
+  const mime = String(doc.mimeType || '').toLowerCase();
+  const name = String(doc.originalFilename || doc.filename || '').toLowerCase();
+  if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/.test(name)) return 'image';
+  if (mime.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+  if (mime.startsWith('text/') || /\.(txt|md|csv|log|json)$/.test(name)) return 'text';
+  return 'other';
 }
 
 export default function CandidateDetailView({ entity, onBack, onEntityUpdate, onDataRefresh }) {
@@ -131,6 +140,14 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
   const [editingWeId, setEditingWeId] = useState(null);
   const [editingWeForm, setEditingWeForm] = useState({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
   const [savingWe, setSavingWe] = useState(false);
+
+  const [hoverPreview, setHoverPreview] = useState(null);
+  const [hoverTexts, setHoverTexts] = useState({});
+  const hoverTimerRef = useRef(null);
+  const [viewerDoc, setViewerDoc] = useState(null);
+  const [viewerText, setViewerText] = useState(null);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const candidateId = entity.id;
 
@@ -324,6 +341,55 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
     }
   }
 
+  function handleDocHoverStart(e, doc) {
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      const x = Math.min(e.clientX + 16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 340);
+      const y = Math.min(e.clientY + 16, (typeof window !== 'undefined' ? window.innerHeight : 800) - 430);
+      setHoverPreview({ doc, x: Math.max(8, x), y: Math.max(8, y) });
+      if (getPreviewKind(doc) === 'text' && !hoverTexts[doc.id]) {
+        fetch(api.candidates.documents.downloadUrl(candidateId, doc.id), { credentials: 'include' })
+          .then(r => r.text())
+          .then(t => setHoverTexts(prev => ({ ...prev, [doc.id]: t })))
+          .catch(() => {});
+      }
+    }, 200);
+  }
+
+  function handleDocHoverEnd() {
+    clearTimeout(hoverTimerRef.current);
+    setHoverPreview(null);
+  }
+
+  function handleOpenViewer(doc) {
+    setHoverPreview(null);
+    setViewerDoc(doc);
+    setViewerText(null);
+    setViewerLoading(false);
+    if (getPreviewKind(doc) === 'text') {
+      setViewerLoading(true);
+      fetch(api.candidates.documents.downloadUrl(candidateId, doc.id), { credentials: 'include' })
+        .then(r => r.text())
+        .then(t => { setViewerText(t); setViewerLoading(false); })
+        .catch(() => { setViewerText('Vorschau nicht verfügbar.'); setViewerLoading(false); });
+    }
+  }
+
+  function closeViewer() {
+    setViewerDoc(null);
+    setViewerText(null);
+    setViewerLoading(false);
+  }
+
+  useEffect(() => {
+    if (!viewerDoc) return;
+    function handleKey(e) {
+      if (e.key === 'Escape') closeViewer();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [viewerDoc]);
+
   async function handleCreateTimelineEvent() {
     if (!newEvent.title.trim()) return;
     setSavingEvent(true);
@@ -482,14 +548,12 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
-                <FileText size={15} /> Lebenslauf-Generator
-              </button>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold border border-app-accent text-app-accent hover:bg-app-accent hover:text-white transition-colors">
-                <ShieldOff size={15} /> CV-Anonymisierer
-              </button>
-            </div>
+            <button
+              onClick={() => setShowProfile(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+            >
+              <FileText size={15} /> Kandidaten-Profil
+            </button>
             <div style={{
               display: 'flex', gap: 8,
               opacity: isDirty ? 1 : 0,
@@ -725,56 +789,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
             )}
           </div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <FileText size={16} style={{ color: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Zertifikate
-              </span>
-            </div>
-            {documents.filter(d => d.category === 'CERTIFICATE').length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {documents.filter(d => d.category === 'CERTIFICATE').map((doc, i, arr) => (
-                  <div key={doc.id || i} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 14px',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                      background: 'var(--accent-light)', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <FileText size={14} style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {doc.originalFilename || doc.filename}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                        {formatDate(doc.createdAt)} &middot; {formatFileSize(doc.fileSize)}
-                      </div>
-                    </div>
-                    <a
-                      href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
-                      download={doc.originalFilename}
-                      style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
-                      className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
-                      title="Herunterladen"
-                    >
-                      <Download size={14} />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
-                <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
-                <div>Keine Zertifikate hinterlegt.</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
-              </div>
-            )}
-          </div>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Briefcase size={16} style={{ color: 'var(--accent)' }} />
@@ -836,7 +850,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {workExperiences.map((entry, i) => (
+                {sortWorkExperience(workExperiences).map((entry, i) => (
                   <div key={entry.id || i} style={{
                     background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px',
                     border: editingWeId === entry.id ? '1px solid var(--accent)' : '1px solid var(--border)',
@@ -918,6 +932,56 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
               </div>
             )}
           </div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FileText size={16} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Zertifikate
+              </span>
+            </div>
+            {documents.filter(d => d.category === 'CERTIFICATE').length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {documents.filter(d => d.category === 'CERTIFICATE').map((doc, i, arr) => (
+                  <div key={doc.id || i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: 'var(--accent-light)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <FileText size={14} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {doc.originalFilename || doc.filename}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        {formatDate(doc.createdAt)} &middot; {formatFileSize(doc.fileSize)}
+                      </div>
+                    </div>
+                    <a
+                      href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
+                      download={doc.originalFilename}
+                      style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                      className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
+                      title="Herunterladen"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
+                <div>Keine Zertifikate hinterlegt.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
       {activeTab === 'vault' && (
@@ -961,7 +1025,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                   }}>
                   <option value="CV" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CV (Lebenslauf)</option>
                   <option value="CERTIFICATE" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CERTIFICATE (Zertifikat / Zeugnis)</option>
-                  <option value="CENSORED" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CENSORED (Anonymisiert)</option>
                   <option value="OTHER" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>OTHER (Sonstiges)</option>
                 </select>
               </div>
@@ -996,7 +1059,13 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                 <div key={doc.id || i} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 14px', borderBottom: i < documents.length - 1 ? '1px solid var(--border)' : 'none',
-                }}>
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                  className="hover:bg-app-bg-hover"
+                  onMouseEnter={(e) => handleDocHoverStart(e, doc)}
+                  onMouseLeave={handleDocHoverEnd}
+                  onClick={() => handleOpenViewer(doc)}
+                >
                   <div style={{
                     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
                     background: 'var(--accent-light)', display: 'flex',
@@ -1022,6 +1091,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                   <a
                     href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
                     download={doc.originalFilename}
+                    onClick={(e) => e.stopPropagation()}
                     style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
                     className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
                     title="Herunterladen"
@@ -1029,7 +1099,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                     <Download size={14} />
                   </a>
                   <button
-                    onClick={() => handleDeleteDocument(doc.id)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id); }}
                     style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
                     className="hover:text-app-danger hover:bg-app-bg-hover transition-colors"
                     title="L\u00f6schen"
@@ -1141,6 +1211,191 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
             </div>
           )}
         </div>
+      )}
+
+      {/* Hover Preview */}
+      {hoverPreview && (
+        <div style={{
+          position: 'fixed', left: hoverPreview.x, top: hoverPreview.y, zIndex: 90,
+          width: 320, background: 'var(--bg-card)', border: '1px solid var(--card-border)',
+          borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', overflow: 'hidden',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            padding: '8px 12px', borderBottom: '1px solid var(--border)',
+            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {hoverPreview.doc.originalFilename || hoverPreview.doc.filename}
+          </div>
+          <div style={{
+            height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--bg-input)', overflow: 'hidden',
+          }}>
+            {getPreviewKind(hoverPreview.doc) === 'pdf' && (
+              <iframe
+                src={api.candidates.documents.previewUrl(candidateId, hoverPreview.doc.id)}
+                title="Vorschau"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'image' && (
+              <img
+                src={api.candidates.documents.previewUrl(candidateId, hoverPreview.doc.id)}
+                alt="Vorschau"
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'text' && (
+              <pre style={{
+                width: '100%', height: '100%', margin: 0, padding: 12,
+                fontSize: 10, lineHeight: 1.5, color: 'var(--text-main)',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflow: 'hidden',
+              }}>
+                {hoverTexts[hoverPreview.doc.id] != null
+                  ? hoverTexts[hoverPreview.doc.id].split('\n').slice(0, 20).join('\n')
+                  : 'Lädt Textvorschau...'}
+              </pre>
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'other' && (
+              <div style={{ textAlign: 'center', padding: 16 }}>
+                <FileText size={32} style={{ color: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 8' }} />
+                <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Keine Vorschau verfügbar</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                  Klicken zum Öffnen
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {viewerDoc && (
+        <div
+          onClick={closeViewer}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--card-border)',
+              width: '100%', maxWidth: 960, height: '85vh',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <FileText size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 13, fontWeight: 700, color: 'var(--text-main)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {viewerDoc.originalFilename || viewerDoc.filename}
+                </span>
+                {viewerDoc.category && (
+                  <span style={{
+                    padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                    background: viewerDoc.category === 'CENSORED' ? 'rgba(5, 150, 105, 0.12)' : 'var(--accent-light)',
+                    color: viewerDoc.category === 'CENSORED' ? 'var(--success)' : 'var(--accent)',
+                    flexShrink: 0,
+                  }}>{viewerDoc.category}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <a
+                  href={api.candidates.documents.downloadUrl(candidateId, viewerDoc.id)}
+                  download={viewerDoc.originalFilename}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                >
+                  <Download size={13} /> Download
+                </a>
+                <button
+                  onClick={closeViewer}
+                  style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                  className="hover:text-app-text-main hover:bg-app-bg-hover transition-colors"
+                  title="Schließen"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div style={{
+              flex: 1, overflow: 'hidden', background: 'var(--bg-input)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {getPreviewKind(viewerDoc) === 'pdf' && (
+                <iframe
+                  src={api.candidates.documents.previewUrl(candidateId, viewerDoc.id)}
+                  title="Dokument"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              )}
+              {getPreviewKind(viewerDoc) === 'image' && (
+                <img
+                  src={api.candidates.documents.previewUrl(candidateId, viewerDoc.id)}
+                  alt={viewerDoc.originalFilename}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              )}
+              {getPreviewKind(viewerDoc) === 'text' && (
+                <div style={{
+                  width: '100%', height: '100%', overflow: 'auto', padding: 20,
+                  display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+                }}>
+                  {viewerLoading ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, paddingTop: 40 }}>
+                      Lade Text...
+                    </div>
+                  ) : (
+                    <pre style={{
+                      margin: 0, fontSize: 12, lineHeight: 1.6, color: 'var(--text-main)',
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
+                    }}>
+                      {viewerText}
+                    </pre>
+                  )}
+                </div>
+              )}
+              {getPreviewKind(viewerDoc) === 'other' && (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <FileText size={48} style={{ color: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 12' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>
+                    Keine Vorschau verfügbar
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
+                    Dieses Dateiformat kann nicht direkt angezeigt werden.
+                  </div>
+                  <a
+                    href={api.candidates.documents.downloadUrl(candidateId, viewerDoc.id)}
+                    download={viewerDoc.originalFilename}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                    style={{ marginTop: 16 }}
+                  >
+                    <Download size={14} /> Herunterladen
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Profile Modal */}
+      {showProfile && (
+        <CandidateProfileModal
+          candidate={entity}
+          workExperiences={sortWorkExperience(workExperiences)}
+          certificates={documents.filter(d => d.category === 'CERTIFICATE')}
+          onClose={() => setShowProfile(false)}
+        />
       )}
     </div>
   );

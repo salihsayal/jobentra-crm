@@ -24,7 +24,9 @@ _SYSTEM_PROMPT = (
     "Return each skill as a short, clean label. Include at most 30 skills.\n"
     "- workExperience: one entry per position. jobTitle is the role, company the employer. "
     "startDate and endDate are free-form (e.g. \"03.2020\", \"2021\", \"heute\"). "
-    "description summarizes key responsibilities in at most 3 short sentences.\n"
+    "description: ONLY the responsibilities and tasks performed in this position. "
+    "MUST NOT mention the company name or employer - the employer belongs exclusively "
+    "in the 'company' field. Keep at most 3 short sentences.\n"
     "- If a section does not exist in the CV, return an empty list.\n"
     "- Do not invent information. Only use what is present in the text."
 )

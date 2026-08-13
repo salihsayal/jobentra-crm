@@ -37,6 +37,24 @@ public class AiServiceClient {
         return response.getBody();
     }
 
+    public byte[] renderProfilePdf(Map<String, Object> profileData) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-API-Key", apiKey);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(profileData, headers);
+        try {
+            ResponseEntity<byte[]> response = restTemplate.postForEntity(
+                    aiServiceUrl + "/profile-pdf",
+                    request,
+                    byte[].class
+            );
+            return response.getBody();
+        } catch (RestClientException e) {
+            throw new RuntimeException("AI service PDF generation failed: " + e.getMessage(), e);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public Map<String, Object> extractCv(byte[] fileBytes, String filename, String candidateId) {
         HttpHeaders headers = new HttpHeaders();
