@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/utils/api';
 import { showToast } from '@/components/Toast';
+import { parseAddress } from '@/utils/format';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -44,11 +45,13 @@ const WE_INPUT_STYLE = {
 const FIELD_LABELS = {
   firstName: 'Vorname', lastName: 'Nachname', email: 'Email', phone: 'Telefon',
   skills: 'F\u00E4higkeiten', job: 'Position', location: 'Ort',
+  plz: 'PLZ', city: 'Ort', street: 'Stra\u00DFe', streetNumber: 'Nr.',
   mobility: 'Mobilit\u00E4t', availability: 'Verf\u00FCgbarkeit', status: 'Status',
 };
 
 const STATUS_OPTIONS = ['NEW', 'IN_PROCESS', 'PLACED', 'REJECTED'];
-const EDITABLE_KEYS = ['firstName', 'lastName', 'email', 'phone', 'skills', 'job', 'location', 'mobility', 'availability', 'status'];
+const EDITABLE_KEYS = ['firstName', 'lastName', 'email', 'phone', 'skills', 'job', 'location', 'plz', 'city', 'street', 'streetNumber', 'mobility', 'availability', 'status'];
+const INFO_GRID_KEYS = ['firstName', 'lastName', 'email', 'phone', 'availability', 'mobility', 'job', 'status', 'plz', 'street', 'city', 'streetNumber'];
 
 const TABS = [
   { key: 'info', label: 'Info' },
@@ -164,7 +167,19 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
     setWeLoading(false);
   }, [candidateId]);
 
-  useEffect(() => { setFormData({ ...entity }); originalData.current = { ...entity }; }, [entity]);
+  useEffect(() => {
+    const initial = { ...entity };
+    const hasStructured = ['plz', 'city', 'street', 'streetNumber'].some(k => initial[k] != null && initial[k] !== '');
+    if (!hasStructured && initial.location) {
+      const parsed = parseAddress(initial.location);
+      initial.plz = parsed.plz;
+      initial.city = parsed.city;
+      initial.street = parsed.street;
+      initial.streetNumber = parsed.streetNumber;
+    }
+    setFormData(initial);
+    originalData.current = initial;
+  }, [entity]);
   useEffect(() => { fetchDocuments(); fetchTimeline(); fetchWorkExperience(); }, [fetchDocuments, fetchTimeline, fetchWorkExperience]);
 
   useEffect(() => {
@@ -365,6 +380,16 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
     if (Object.values(validationErrors).some(Boolean)) return;
     const body = {};
     EDITABLE_KEYS.forEach(k => { body[k] = parseField(k, formData[k]); });
+    const plz = String(formData.plz || '').trim();
+    const city = String(formData.city || '').trim();
+    const street = String(formData.street || '').trim();
+    const streetNumber = String(formData.streetNumber || '').trim();
+    const combined = [plz, city, street, streetNumber].filter(Boolean).join(' ');
+    body.plz = plz;
+    body.city = city;
+    body.street = street;
+    body.streetNumber = streetNumber;
+    body.location = combined || String(entity.location || '');
     if (onEntityUpdate) {
       try {
         const updated = await onEntityUpdate('candidate', entity.id, body);
@@ -510,7 +535,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
               Pers&ouml;nliche Daten
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-              {['firstName', 'lastName', 'email', 'phone', 'availability', 'mobility', 'job', 'status'].map(key => {
+              {INFO_GRID_KEYS.map(key => {
                 const value = formData[key];
                 const display = formatField(key, value);
                 const err = validationErrors[key];

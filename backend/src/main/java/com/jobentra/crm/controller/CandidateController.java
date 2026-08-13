@@ -72,6 +72,10 @@ public class CandidateController {
             }
             candidate.setSkills(request.getSkills());
             candidate.setLocation(request.getLocation());
+            candidate.setPlz(request.getPlz());
+            candidate.setCity(request.getCity());
+            candidate.setStreet(request.getStreet());
+            candidate.setStreetNumber(request.getStreetNumber());
             candidate.setMobility(request.getMobility() != null && request.getMobility());
             candidate.setAvailability(request.getAvailability());
             candidate.setJob(request.getJob());
@@ -96,6 +100,10 @@ public class CandidateController {
             }
             updated.setSkills(request.getSkills());
             updated.setLocation(request.getLocation());
+            updated.setPlz(request.getPlz());
+            updated.setCity(request.getCity());
+            updated.setStreet(request.getStreet());
+            updated.setStreetNumber(request.getStreetNumber());
             updated.setMobility(request.getMobility() != null && request.getMobility());
             updated.setAvailability(request.getAvailability());
             updated.setJob(request.getJob());

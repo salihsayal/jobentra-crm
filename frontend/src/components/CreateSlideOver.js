@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 
 const FIELD_ORDER = {
-  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'job', 'skills', 'location', 'mobility', 'availability', 'status', 'archived'],
+  candidate: ['id', 'firstName', 'lastName', 'email', 'phone', 'job', 'skills', 'plz', 'city', 'street', 'streetNumber', 'mobility', 'availability', 'status', 'archived'],
   customer: ['id', 'companyName', 'contactPerson', 'email', 'phone', 'industry', 'status', 'isArchived'],
   job: ['id', 'title', 'description', 'customerId', 'salaryRange', 'status', 'isArchived'],
   billing: ['id', 'invoiceNumber', 'customerId', 'candidateId', 'jobId', 'amount', 'currency', 'status', 'dueDate', 'archived'],
@@ -18,7 +18,10 @@ const FORM_CONFIGS = {
       { key: 'phone', label: 'Telefon', type: 'text' },
       { key: 'job', label: 'Beruf', type: 'text', required: true },
       { key: 'skills', label: 'F\u00E4higkeiten', type: 'text' },
-      { key: 'location', label: 'Ort', type: 'text' },
+      { key: 'plz', label: 'PLZ', type: 'text', row: 'plz-ort' },
+      { key: 'city', label: 'Ort', type: 'text', row: 'plz-ort' },
+      { key: 'street', label: 'Stra\u00DFe', type: 'text', row: 'strasse-nr' },
+      { key: 'streetNumber', label: 'Nr.', type: 'text', row: 'strasse-nr' },
       { key: 'mobility', label: 'Mobilit\u00E4t', type: 'select', options: ['Ja (PKW)', 'Nein (Kein PKW)'] },
       { key: 'availability', label: 'Verf\u00FCgbarkeit', type: 'text' },
       { key: 'status', label: 'Status', type: 'select', options: ['NEW', 'IN_PROCESS', 'PLACED', 'REJECTED'] },
@@ -122,6 +125,89 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave, ref
 
   if (!config) return null;
 
+  function renderField(field) {
+    return (
+      <div key={field.key}>
+        <label style={{
+          display: 'block', fontSize: 12, fontWeight: 600,
+          color: 'var(--text-dim)', marginBottom: 4,
+          textTransform: 'uppercase', letterSpacing: '0.05em',
+        }}>
+          {field.label}
+          {field.required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
+        </label>
+
+        {field.type === 'select' ? (
+          <select
+            value={formData[field.key] || ''}
+            onChange={e => updateField(field.key, e.target.value)}
+            style={selectStyle}
+            className="focus:border-app-accent"
+          >
+            {field.options.map(opt => (
+              <option key={opt} value={opt} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        ) : field.type === 'entity-select' ? (
+          <select
+            value={formData[field.key] || ''}
+            onChange={e => updateField(field.key, e.target.value)}
+            style={selectStyle}
+            className="focus:border-app-accent"
+          >
+            <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-dim)' }}>
+              {field.required ? 'Bitte w\u00e4hlen...' : 'Keine'}
+            </option>
+            {(refData?.[field.entity] || []).filter(e => !e.archived).map(entity => {
+              const label = entity.companyName || (entity.firstName && entity.lastName ? `${entity.firstName} ${entity.lastName}` : null) || entity.title || entity.invoiceNumber || entity.id;
+              return (
+                <option key={entity.id} value={entity.id} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        ) : field.type === 'date' ? (
+          <input
+            type="date"
+            value={formData[field.key] || ''}
+            onChange={e => updateField(field.key, e.target.value)}
+            style={{ ...inputStyle, colorScheme: 'dark' }}
+            className="focus:border-app-accent"
+          />
+        ) : (
+          <input
+            type={field.type}
+            value={formData[field.key] || ''}
+            onChange={e => updateField(field.key, e.target.value)}
+            placeholder={field.required ? undefined : 'Optional'}
+            style={inputStyle}
+            className="focus:border-app-accent placeholder:text-app-text-dim"
+            step={field.type === 'number' ? '0.01' : undefined}
+          />
+        )}
+        {validationErrors[field.key] && (
+          <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+            {validationErrors[field.key]}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const fieldRows = [];
+  for (let i = 0; i < config.fields.length; i++) {
+    const field = config.fields[i];
+    const last = fieldRows[fieldRows.length - 1];
+    if (field.row && last && last[0].row === field.row) {
+      last.push(field);
+    } else {
+      fieldRows.push([field]);
+    }
+  }
+
   function validateField(key, value) {
     const str = String(value ?? '').trim();
     if (!str) {
@@ -161,6 +247,15 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave, ref
 
     if (entityType === 'candidate') {
       newEntity.mobility = newEntity.mobility === 'Ja (PKW)';
+      const plz = String(newEntity.plz || '').trim();
+      const city = String(newEntity.city || '').trim();
+      const street = String(newEntity.street || '').trim();
+      const streetNumber = String(newEntity.streetNumber || '').trim();
+      newEntity.plz = plz;
+      newEntity.city = city;
+      newEntity.street = street;
+      newEntity.streetNumber = streetNumber;
+      newEntity.location = [plz, city, street, streetNumber].filter(Boolean).join(' ');
     }
     if (entityType === 'billing' && newEntity.amount) {
       newEntity.amount = parseFloat(newEntity.amount) || 0;
@@ -209,73 +304,12 @@ export default function CreateSlideOver({ entityType, open, onClose, onSave, ref
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {config.fields.map(field => (
-              <div key={field.key}>
-                <label style={{
-                  display: 'block', fontSize: 12, fontWeight: 600,
-                  color: 'var(--text-dim)', marginBottom: 4,
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}>
-                  {field.label}
-                  {field.required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
-                </label>
-
-                {field.type === 'select' ? (
-                  <select
-                    value={formData[field.key] || ''}
-                    onChange={e => updateField(field.key, e.target.value)}
-                    style={selectStyle}
-                    className="focus:border-app-accent"
-                  >
-                    {field.options.map(opt => (
-                      <option key={opt} value={opt} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : field.type === 'entity-select' ? (
-                  <select
-                    value={formData[field.key] || ''}
-                    onChange={e => updateField(field.key, e.target.value)}
-                    style={selectStyle}
-                    className="focus:border-app-accent"
-                  >
-                    <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-dim)' }}>
-                      {field.required ? 'Bitte w\u00e4hlen...' : 'Keine'}
-                    </option>
-                    {(refData?.[field.entity] || []).filter(e => !e.archived).map(entity => {
-                      const label = entity.companyName || (entity.firstName && entity.lastName ? `${entity.firstName} ${entity.lastName}` : null) || entity.title || entity.invoiceNumber || entity.id;
-                      return (
-                        <option key={entity.id} value={entity.id} style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>
-                          {label}
-                        </option>
-                      );
-                    })}
-                  </select>
-                ) : field.type === 'date' ? (
-                  <input
-                    type="date"
-                    value={formData[field.key] || ''}
-                    onChange={e => updateField(field.key, e.target.value)}
-                    style={{ ...inputStyle, colorScheme: 'dark' }}
-                    className="focus:border-app-accent"
-                  />
-                ) : (
-                  <input
-                    type={field.type}
-                    value={formData[field.key] || ''}
-                    onChange={e => updateField(field.key, e.target.value)}
-                    placeholder={field.required ? undefined : 'Optional'}
-                    style={inputStyle}
-                    className="focus:border-app-accent placeholder:text-app-text-dim"
-                    step={field.type === 'number' ? '0.01' : undefined}
-                  />
-                )}
-                {validationErrors[field.key] && (
-                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
-                    {validationErrors[field.key]}
-                  </div>
-                )}
+            {fieldRows.map((rowFields) => (
+              <div
+                key={rowFields.map(f => f.key).join('-')}
+                style={rowFields.length > 1 ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } : undefined}
+              >
+                {rowFields.map(field => renderField(field))}
               </div>
             ))}
           </div>
