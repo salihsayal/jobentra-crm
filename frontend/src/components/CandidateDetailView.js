@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
-  ArrowLeft, FileText, ShieldOff, Check, Undo2, MapPin, Calendar,
+  ArrowLeft, FileText, Check, Undo2, MapPin, Calendar,
   User, Mail, Phone, Briefcase, GraduationCap, FolderOpen, Clock,
   MessageSquare, Award, Upload, Download, Trash2, Plus, X, Pencil
 } from 'lucide-react';
@@ -91,7 +91,6 @@ function parseField(key, value) {
 
 function detectCategory(filename) {
   const lower = (filename || '').toLowerCase();
-  if (lower.includes('censored') || lower.includes('anonym')) return 'CENSORED';
   if (lower.includes('lebenslauf') || lower.includes('cv') || lower.includes('resume')) return 'CV';
   if (lower.includes('zertifikat') || lower.includes('zeugnis') || lower.includes('certificate')) return 'CERTIFICATE';
   return 'OTHER';
@@ -547,14 +546,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
-                <FileText size={15} /> Lebenslauf-Generator
-              </button>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold border border-app-accent text-app-accent hover:bg-app-accent hover:text-white transition-colors">
-                <ShieldOff size={15} /> CV-Anonymisierer
-              </button>
-            </div>
             <div style={{
               display: 'flex', gap: 8,
               opacity: isDirty ? 1 : 0,
@@ -1026,7 +1017,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                   }}>
                   <option value="CV" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CV (Lebenslauf)</option>
                   <option value="CERTIFICATE" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CERTIFICATE (Zertifikat / Zeugnis)</option>
-                  <option value="CENSORED" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CENSORED (Anonymisiert)</option>
                   <option value="OTHER" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>OTHER (Sonstiges)</option>
                 </select>
               </div>
