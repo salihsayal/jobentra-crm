@@ -77,9 +77,9 @@ def _draw_header(canvas, doc, data):
     canvas.saveState()
     logo = ImageReader(LOGO_PATH)
     lw, lh = logo.getSize()
-    logo_h = 13 * mm
+    logo_h = 26 * mm
     logo_w = logo_h * lw / lh
-    top = PAGE_H - 14 * mm
+    top = PAGE_H - 8 * mm
     canvas.drawImage(
         LOGO_PATH, MARGIN, top - logo_h,
         width=logo_w, height=logo_h, preserveAspectRatio=True, mask="auto",
@@ -94,7 +94,8 @@ def _draw_header(canvas, doc, data):
     bw = text_w + 2 * pad_x
     bh = font_size + 2 * pad_y + 2
     bx = PAGE_W - MARGIN - bw
-    by = top - bh + 2
+    logo_center_y = top - logo_h / 2
+    by = logo_center_y - bh / 2
     canvas.setFillColor(NAVY)
     canvas.roundRect(bx, by, bw, bh, 6, stroke=0, fill=1)
     canvas.setFillColor(white)
@@ -204,7 +205,7 @@ def build_profile_pdf(data: ProfilePdfData) -> bytes:
         pagesize=A4,
         leftMargin=MARGIN,
         rightMargin=MARGIN,
-        topMargin=30 * mm,
+        topMargin=38 * mm,
         bottomMargin=24 * mm,
         title=f"Kandidaten-Profil #{data.refNumber}",
         author="Jobentra GmbH",

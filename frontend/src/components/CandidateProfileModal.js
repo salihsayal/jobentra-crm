@@ -126,7 +126,7 @@ export default function CandidateProfileModal({ candidate, workExperiences, cert
                 <img
                   src="/logo.png"
                   alt="Jobentra"
-                  className="h-12 w-auto"
+                  className="h-24 w-auto"
                 />
                 <div className="rounded-lg bg-[#0E2A47] px-4 py-2 text-sm font-semibold text-white">
                   Ref: #{refNumber}{city ? ` | Standort: ${city}` : ''}
