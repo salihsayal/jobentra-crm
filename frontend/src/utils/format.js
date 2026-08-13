@@ -9,6 +9,45 @@ export function truncateSkills(skills, max = 3) {
 
 const STREET_PATTERN = /(straße|str\.?|weg|platz|allee|gasse|ring|damm|ufer|street|st\.?|road|avenue|boulevard)$/i;
 
+export function parseStartDate(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{1,2})[.\/\-](\d{2,4})$/);
+  if (m) {
+    let month = parseInt(m[1], 10);
+    let year = parseInt(m[2], 10);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+    if (month < 1 || month > 12) return null;
+    return { y: year, m: month };
+  }
+  m = s.match(/^(\d{4})[.\/\-](\d{1,2})$/);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    if (month < 1 || month > 12) return null;
+    return { y: year, m: month };
+  }
+  m = s.match(/^(\d{4})$/);
+  if (m) return { y: parseInt(m[1], 10), m: 0 };
+  m = s.match(/^(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})$/);
+  if (m) return { y: parseInt(m[1], 10), m: parseInt(m[2], 10) };
+  return null;
+}
+
+export function sortWorkExperience(entries) {
+  return [...(entries || [])].sort((a, b) => {
+    const da = parseStartDate(a.startDate);
+    const db = parseStartDate(b.startDate);
+    if (da && db) {
+      if (da.y !== db.y) return db.y - da.y;
+      return db.m - da.m;
+    }
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+    return 0;
+  });
+}
+
 export function parseAddress(location) {
   const result = { plz: '', city: '', street: '', streetNumber: '' };
   let rest = String(location || '').trim();

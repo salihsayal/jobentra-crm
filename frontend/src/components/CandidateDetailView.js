@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/utils/api';
 import { showToast } from '@/components/Toast';
-import { parseAddress } from '@/utils/format';
+import { parseAddress, sortWorkExperience } from '@/utils/format';
+import CandidateProfileModal from './CandidateProfileModal';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -146,6 +147,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
   const [viewerDoc, setViewerDoc] = useState(null);
   const [viewerText, setViewerText] = useState(null);
   const [viewerLoading, setViewerLoading] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const candidateId = entity.id;
 
@@ -546,6 +548,12 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+            <button
+              onClick={() => setShowProfile(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+            >
+              <FileText size={15} /> Kandidaten-Profil
+            </button>
             <div style={{
               display: 'flex', gap: 8,
               opacity: isDirty ? 1 : 0,
@@ -781,56 +789,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
             )}
           </div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <FileText size={16} style={{ color: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Zertifikate
-              </span>
-            </div>
-            {documents.filter(d => d.category === 'CERTIFICATE').length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {documents.filter(d => d.category === 'CERTIFICATE').map((doc, i, arr) => (
-                  <div key={doc.id || i} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 14px',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                      background: 'var(--accent-light)', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <FileText size={14} style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {doc.originalFilename || doc.filename}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                        {formatDate(doc.createdAt)} &middot; {formatFileSize(doc.fileSize)}
-                      </div>
-                    </div>
-                    <a
-                      href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
-                      download={doc.originalFilename}
-                      style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
-                      className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
-                      title="Herunterladen"
-                    >
-                      <Download size={14} />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
-                <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
-                <div>Keine Zertifikate hinterlegt.</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
-              </div>
-            )}
-          </div>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Briefcase size={16} style={{ color: 'var(--accent)' }} />
@@ -892,7 +850,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {workExperiences.map((entry, i) => (
+                {sortWorkExperience(workExperiences).map((entry, i) => (
                   <div key={entry.id || i} style={{
                     background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px',
                     border: editingWeId === entry.id ? '1px solid var(--accent)' : '1px solid var(--border)',
@@ -971,6 +929,56 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FileText size={16} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Zertifikate
+              </span>
+            </div>
+            {documents.filter(d => d.category === 'CERTIFICATE').length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {documents.filter(d => d.category === 'CERTIFICATE').map((doc, i, arr) => (
+                  <div key={doc.id || i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: 'var(--accent-light)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <FileText size={14} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {doc.originalFilename || doc.filename}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                        {formatDate(doc.createdAt)} &middot; {formatFileSize(doc.fileSize)}
+                      </div>
+                    </div>
+                    <a
+                      href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
+                      download={doc.originalFilename}
+                      style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                      className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
+                      title="Herunterladen"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                <Award size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
+                <div>Keine Zertifikate hinterlegt.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Lade Zertifikate im Vault-Tab hoch.</div>
               </div>
             )}
           </div>
@@ -1378,6 +1386,16 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate, on
             </div>
           </div>
         </div>
+      )}
+
+      {/* Candidate Profile Modal */}
+      {showProfile && (
+        <CandidateProfileModal
+          candidate={entity}
+          workExperiences={sortWorkExperience(workExperiences)}
+          certificates={documents.filter(d => d.category === 'CERTIFICATE')}
+          onClose={() => setShowProfile(false)}
+        />
       )}
     </div>
   );

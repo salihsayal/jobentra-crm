@@ -136,6 +136,25 @@ public class CandidateController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/{candidateId}/profile-pdf")
+    public ResponseEntity<?> generateProfilePdf(@PathVariable UUID candidateId,
+                                                @RequestBody Map<String, Object> profileData) {
+        try {
+            candidateService.getCandidateById(candidateId)
+                    .orElseThrow(() -> new RuntimeException("Candidate not found: " + candidateId));
+            byte[] pdf = aiServiceClient.renderProfilePdf(profileData);
+            String fileName = profileData.get("fileName") != null
+                    ? String.valueOf(profileData.get("fileName"))
+                    : "Kandidaten-Profil.pdf";
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(pdf);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         try {

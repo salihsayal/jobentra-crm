@@ -90,6 +90,25 @@ export const api = {
     delete(id) { return request(`/candidates/${id}`, { method: 'DELETE' }); },
     archive(id) { return request(`/candidates/${id}/archive`, { method: 'PATCH' }); },
     unarchive(id) { return request(`/candidates/${id}/unarchive`, { method: 'PATCH' }); },
+    profilePdf(candidateId, data) {
+      return fetch(`${BASE}/candidates/${candidateId}/profile-pdf`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          let msg = `PDF-Export fehlgeschlagen: ${res.status}`;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed.error) msg = parsed.error;
+          } catch (e) { /* keep default message */ }
+          throw new Error(msg);
+        }
+        return res.blob();
+      });
+    },
     workExperience: {
       list(candidateId) { return request(`/candidates/${candidateId}/work-experience`); },
       create(candidateId, b) { return request(`/candidates/${candidateId}/work-experience`, { method: 'POST', body: JSON.stringify(b) }); },
