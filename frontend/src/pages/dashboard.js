@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect, useReducer, useRef } from 'react';
 import { useRouter } from 'next/router';
+import { AlertTriangle } from 'lucide-react';
 import Topbar from '@/components/Topbar';
 import Sidebar from '@/components/Sidebar';
 import Canvas from '@/components/Canvas';
 import { ToastProvider, showToast } from '@/components/Toast';
 import { toggleTheme as toggleThemeUtil, getStoredTheme } from '@/utils/theme';
-import { api, setAuthRedirect } from '@/utils/api';
+import { api, setAuthRedirect, SessionExpiredError } from '@/utils/api';
+import { startSessionTracking, stopSessionTracking, renewSession } from '@/utils/session';
 
 const INITIAL = { customers: [], candidates: [], jobs: [], billings: [] };
 
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [data, setData] = useState(INITIAL);
   const [dataVersion, refreshData] = useReducer(x => x + 1, 0);
   const [loading, setLoading] = useState(true);
+  const [sessionRemaining, setSessionRemaining] = useState(null);
   const authPendingRef = useRef(false);
 
   useEffect(() => { setTheme(getStoredTheme()); }, []);
@@ -30,6 +33,15 @@ export default function Dashboard() {
     setAuthRedirect(() => router.push('/'));
     return () => setAuthRedirect(null);
   }, [router]);
+
+  useEffect(() => {
+    startSessionTracking({
+      onWarn: () => setSessionRemaining(60_000),
+      onCancel: () => setSessionRemaining(null),
+      onTick: (ms) => setSessionRemaining(ms),
+    });
+    return () => stopSessionTracking();
+  }, []);
 
   useEffect(() => {
     async function loadAll() {
@@ -60,7 +72,7 @@ export default function Dashboard() {
         const res = await fetch('/api/customers?size=1', { credentials: 'include' });
         if (res.ok) return;
         if (res.status === 401 || res.status === 403) {
-          showToast('Session expired. Please log in again.');
+          showToast('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
           router.push('/');
           return;
         }
@@ -68,13 +80,13 @@ export default function Dashboard() {
           await new Promise(r => setTimeout(r, AUTH_RETRY_MS * (attempt + 1)));
           return checkAuth(attempt + 1);
         }
-        showToast('Backend temporarily unreachable. Retrying...');
+        showToast('Backend vorübergehend nicht erreichbar. Neuer Versuch...');
       } catch {
         if (attempt < AUTH_RETRY_MAX) {
           await new Promise(r => setTimeout(r, AUTH_RETRY_MS * (attempt + 1)));
           return checkAuth(attempt + 1);
         }
-        showToast('Unable to reach backend. Please check your connection.');
+        showToast('Backend nicht erreichbar. Bitte Verbindung prüfen.');
       }
     }
 
@@ -117,7 +129,16 @@ export default function Dashboard() {
 
   const ENTITY_API = { candidate: api.candidates, customer: api.customers, job: api.jobs, billing: api.billings };
 
-  async function handleCreate(et, e) { await ENTITY_API[et].create(e); refreshData(); }
+  async function handleCreate(et, e) {
+    try {
+      await ENTITY_API[et].create(e);
+    } catch (err) {
+      if (err instanceof SessionExpiredError) return;
+      showToast(err.message || 'Erstellen fehlgeschlagen');
+      return;
+    }
+    refreshData();
+  }
   async function handleBulkArchive(et, ids) { await Promise.all(ids.map(id => ENTITY_API[et].archive(id).catch(() => {}))); refreshData(); }
   async function handleBulkUnarchive(et, ids) { await Promise.all(ids.map(id => ENTITY_API[et].unarchive(id).catch(() => {}))); refreshData(); }
   async function handleBulkDelete(et, ids) {
@@ -128,7 +149,17 @@ export default function Dashboard() {
     if (errors.length > 0) showToast(errors.join('\n'));
     refreshData();
   }
-  async function handleEntityUpdate(et, id, body) { const u = await ENTITY_API[et].update(id, body); refreshData(); return u; }
+  async function handleEntityUpdate(et, id, body) {
+    try {
+      const u = await ENTITY_API[et].update(id, body);
+      refreshData();
+      return u;
+    } catch (err) {
+      if (err instanceof SessionExpiredError) return null;
+      showToast(err.message || 'Speichern fehlgeschlagen');
+      return null;
+    }
+  }
 
   function getEntityData(view) {
     const m = { customers: data.customers, candidates: data.candidates, jobs: data.jobs, billings: data.billings };
@@ -143,6 +174,29 @@ export default function Dashboard() {
     <ToastProvider>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar omniQuery={omniQuery} onOmniChange={handleOmniChange} omniResults={omniResults} onOmniSelect={handleOmniSelect} />
+      {sessionRemaining !== null && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+          background: 'var(--warning)', color: '#1a1a1a', padding: '10px 24px',
+          fontSize: 13, fontWeight: 600, flexShrink: 0,
+        }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+          <span>
+            Ihre Sitzung läuft in {Math.max(1, Math.ceil(sessionRemaining / 1000))} Sekunden ab.
+            Bitte speichern Sie Ihre Arbeit und melden Sie sich erneut an.
+          </span>
+          <button
+            onClick={() => renewSession()}
+            style={{
+              background: 'rgba(0,0,0,0.15)', border: 'none', borderRadius: 6,
+              padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              color: '#1a1a1a', whiteSpace: 'nowrap',
+            }}
+          >
+            Sitzung verlängern
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar currentView={currentView} onNavigate={handleNavigate} theme={theme} onToggleTheme={handleToggleTheme} />
         <main style={{ flex: 1, overflow: 'auto', padding: 24, background: 'var(--bg-canvas)' }}>

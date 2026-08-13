@@ -13,6 +13,7 @@ services:
       DEMO_EMAIL: ${DEMO_EMAIL}
       DEMO_PASSWORD: ${DEMO_PASSWORD}
       CANDIDATE_FILES_PATH: /data/candidates
+      SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-15}
     ports:
       - "8080:8080"
     volumes:

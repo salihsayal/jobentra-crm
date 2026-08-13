@@ -2,15 +2,33 @@ const BASE = '/api';
 
 let _authRedirect = null;
 let _redirectScheduled = false;
+let _onActivity = null;
+
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired');
+    this.name = 'SessionExpiredError';
+  }
+}
 
 export function setAuthRedirect(fn) {
   _authRedirect = typeof fn === 'function' ? fn : null;
 }
 
+export function setActivityListener(fn) {
+  _onActivity = typeof fn === 'function' ? fn : null;
+}
+
+function notifyActivity() {
+  if (_onActivity) {
+    try { _onActivity(); } catch (e) { /* noop */ }
+  }
+}
+
 function handleAuthExpired() {
   if (typeof window !== 'undefined') {
     import('@/components/Toast').then(({ showToast }) => {
-      showToast('Session expired. Please log in again.');
+      showToast('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
     });
   }
   if (_redirectScheduled) return;
@@ -33,13 +51,14 @@ async function request(path, options = {}) {
   });
   if (res.status === 401 || res.status === 403) {
     handleAuthExpired();
-    throw new Error('Session expired');
+    throw new SessionExpiredError();
   }
   if (res.status === 204) return null;
   const text = await res.text();
   if (!text) return null;
   const data = JSON.parse(text);
   if (!res.ok) throw new Error(data.error || `Failed: ${res.status}`);
+  notifyActivity();
   return data;
 }
 
@@ -51,6 +70,10 @@ function withParams(path, params) {
 }
 
 export const api = {
+  auth: {
+    session() { return request('/auth/session'); },
+    renew() { return request('/auth/renew', { method: 'POST' }); },
+  },
   customers: {
     list(p) { return request(withParams('/customers', p)); },
     create(b) { return request('/customers', { method: 'POST', body: JSON.stringify(b) }); },
