@@ -116,6 +116,9 @@ export const api = {
       downloadUrl(candidateId, docId) {
         return `${BASE}/candidates/${candidateId}/documents/${docId}`;
       },
+      previewUrl(candidateId, docId) {
+        return `${BASE}/candidates/${candidateId}/documents/${docId}?inline=true`;
+      },
       delete(candidateId, docId) {
         return request(`/candidates/${candidateId}/documents/${docId}`, { method: 'DELETE' });
       },
