@@ -55,7 +55,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: ai-service
-        image: git.ad.jobentra.de/salih/crm-ai-service:7b17016
+        image: git.ad.jobentra.de/salih/crm-ai-service:b84475b
         ports:
         - containerPort: 8000
         env:
@@ -134,7 +134,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: backend
-        image: git.ad.jobentra.de/salih/crm-backend:7b17016
+        image: git.ad.jobentra.de/salih/crm-backend:b84475b
         ports:
         - containerPort: 8080
         env:
@@ -212,7 +212,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: frontend
-        image: git.ad.jobentra.de/salih/crm-frontend:7b17016
+        image: git.ad.jobentra.de/salih/crm-frontend:b84475b
         ports:
         - containerPort: 3000
         env:
