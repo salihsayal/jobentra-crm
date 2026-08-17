@@ -52,6 +52,10 @@ public class CandidateService {
         existing.setStatus(updated.getStatus());
         existing.setSkills(updated.getSkills());
         existing.setLocation(updated.getLocation());
+        existing.setPlz(updated.getPlz());
+        existing.setCity(updated.getCity());
+        existing.setStreet(updated.getStreet());
+        existing.setStreetNumber(updated.getStreetNumber());
         existing.setMobility(updated.isMobility());
         existing.setAvailability(updated.getAvailability());
         existing.setJob(updated.getJob());

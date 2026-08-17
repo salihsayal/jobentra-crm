@@ -32,6 +32,7 @@ services:
       DEMO_EMAIL: ${DEMO_EMAIL}
       DEMO_PASSWORD: ${DEMO_PASSWORD}
       CANDIDATE_FILES_PATH: /data/candidates
+      SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-15}
     ports:
       - "8080:8080"
     volumes:
@@ -51,8 +52,14 @@ services:
       AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY}
       AI_SERVICE_PUBLIC_URL: ${AI_SERVICE_PUBLIC_URL}
       ALLOWED_ORIGINS: http://backend:8080,http://localhost:8080
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/secrets/crm-gemini-runner.json}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-jobentra-crm-505722}
+      GCP_LOCATION: ${GCP_LOCATION:-europe-west3}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}
     ports:
       - "8000:8000"
+    volumes:
+      - ./secrets/crm-gemini-runner.json:/app/secrets/crm-gemini-runner.json:ro
     networks:
       - jobentra-network
 

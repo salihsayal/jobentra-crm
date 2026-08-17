@@ -19,6 +19,10 @@ public class UpdateCandidateRequest {
     private String status;
     private String skills;
     private String location;
+    private String plz;
+    private String city;
+    private String street;
+    private String streetNumber;
     private Boolean mobility;
     private String availability;
     private String job;
@@ -43,6 +47,18 @@ public class UpdateCandidateRequest {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public String getPlz() { return plz; }
+    public void setPlz(String plz) { this.plz = plz; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
+
+    public String getStreetNumber() { return streetNumber; }
+    public void setStreetNumber(String streetNumber) { this.streetNumber = streetNumber; }
 
     public Boolean getMobility() { return mobility; }
     public void setMobility(Boolean mobility) { this.mobility = mobility; }

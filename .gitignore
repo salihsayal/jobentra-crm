@@ -46,3 +46,8 @@ ai-service/venv/
 *.log
 logs/
 appdata/
+
+# Python cache
+__pycache__/
+*.pyc
+secrets/

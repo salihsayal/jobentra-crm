@@ -36,6 +36,15 @@ public class Candidate {
 
     private String location;
 
+    private String plz;
+
+    private String city;
+
+    private String street;
+
+    @Column(name = "street_number")
+    private String streetNumber;
+
     private boolean mobility;
 
     private String availability;
@@ -87,6 +96,18 @@ public class Candidate {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public String getPlz() { return plz; }
+    public void setPlz(String plz) { this.plz = plz; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
+
+    public String getStreetNumber() { return streetNumber; }
+    public void setStreetNumber(String streetNumber) { this.streetNumber = streetNumber; }
 
     public boolean isMobility() { return mobility; }
     public void setMobility(boolean mobility) { this.mobility = mobility; }

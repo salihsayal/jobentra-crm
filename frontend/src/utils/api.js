@@ -2,15 +2,33 @@ const BASE = '/api';
 
 let _authRedirect = null;
 let _redirectScheduled = false;
+let _onActivity = null;
+
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired');
+    this.name = 'SessionExpiredError';
+  }
+}
 
 export function setAuthRedirect(fn) {
   _authRedirect = typeof fn === 'function' ? fn : null;
 }
 
+export function setActivityListener(fn) {
+  _onActivity = typeof fn === 'function' ? fn : null;
+}
+
+function notifyActivity() {
+  if (_onActivity) {
+    try { _onActivity(); } catch (e) { /* noop */ }
+  }
+}
+
 function handleAuthExpired() {
   if (typeof window !== 'undefined') {
     import('@/components/Toast').then(({ showToast }) => {
-      showToast('Session expired. Please log in again.');
+      showToast('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
     });
   }
   if (_redirectScheduled) return;
@@ -33,13 +51,14 @@ async function request(path, options = {}) {
   });
   if (res.status === 401 || res.status === 403) {
     handleAuthExpired();
-    throw new Error('Session expired');
+    throw new SessionExpiredError();
   }
   if (res.status === 204) return null;
   const text = await res.text();
   if (!text) return null;
   const data = JSON.parse(text);
   if (!res.ok) throw new Error(data.error || `Failed: ${res.status}`);
+  notifyActivity();
   return data;
 }
 
@@ -51,6 +70,10 @@ function withParams(path, params) {
 }
 
 export const api = {
+  auth: {
+    session() { return request('/auth/session'); },
+    renew() { return request('/auth/renew', { method: 'POST' }); },
+  },
   customers: {
     list(p) { return request(withParams('/customers', p)); },
     create(b) { return request('/customers', { method: 'POST', body: JSON.stringify(b) }); },
@@ -61,11 +84,37 @@ export const api = {
   },
   candidates: {
     list(p) { return request(withParams('/candidates', p)); },
+    get(id) { return request(`/candidates/${id}`); },
     create(b) { return request('/candidates', { method: 'POST', body: JSON.stringify(b) }); },
     update(id, b) { return request(`/candidates/${id}`, { method: 'PUT', body: JSON.stringify(b) }); },
     delete(id) { return request(`/candidates/${id}`, { method: 'DELETE' }); },
     archive(id) { return request(`/candidates/${id}/archive`, { method: 'PATCH' }); },
     unarchive(id) { return request(`/candidates/${id}/unarchive`, { method: 'PATCH' }); },
+    profilePdf(candidateId, data) {
+      return fetch(`${BASE}/candidates/${candidateId}/profile-pdf`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          let msg = `PDF-Export fehlgeschlagen: ${res.status}`;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed.error) msg = parsed.error;
+          } catch (e) { /* keep default message */ }
+          throw new Error(msg);
+        }
+        return res.blob();
+      });
+    },
+    workExperience: {
+      list(candidateId) { return request(`/candidates/${candidateId}/work-experience`); },
+      create(candidateId, b) { return request(`/candidates/${candidateId}/work-experience`, { method: 'POST', body: JSON.stringify(b) }); },
+      update(candidateId, entryId, b) { return request(`/candidates/${candidateId}/work-experience/${entryId}`, { method: 'PUT', body: JSON.stringify(b) }); },
+      delete(candidateId, entryId) { return request(`/candidates/${candidateId}/work-experience/${entryId}`, { method: 'DELETE' }); },
+    },
     documents: {
       list(candidateId) { return request(`/candidates/${candidateId}/documents`); },
       upload(candidateId, file, category) {
@@ -85,6 +134,9 @@ export const api = {
       },
       downloadUrl(candidateId, docId) {
         return `${BASE}/candidates/${candidateId}/documents/${docId}`;
+      },
+      previewUrl(candidateId, docId) {
+        return `${BASE}/candidates/${candidateId}/documents/${docId}?inline=true`;
       },
       delete(candidateId, docId) {
         return request(`/candidates/${candidateId}/documents/${docId}`, { method: 'DELETE' });

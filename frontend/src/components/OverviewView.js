@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import StatsCharts from './StatsCharts';
 import DataTable from './DataTable';
 import CreateSlideOver from './CreateSlideOver';
+import { truncateSkills } from '@/utils/format';
 
 const STATUS_COLORS = {
   ACTIVE: { bg: 'rgba(52,211,153,0.12)', text: '#34d399' }, INACTIVE: { bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' }, LEAD: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -27,7 +28,21 @@ const TABLE_COLUMNS = {
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{row.job || '-'}</div>
       </div>
     )},
-    { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => <span style={{ fontSize: 12, maxWidth: 180, display: 'inline-block', whiteSpace: 'normal', lineHeight: 1.4 }}>{v || '-'}</span> },
+    { key: 'skills', label: 'F\u00E4higkeiten', render: (v) => {
+      const { shown, hidden } = truncateSkills(v);
+      if (!shown) return '-';
+      return (
+        <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          {shown}
+          {hidden > 0 && (
+            <span style={{
+              marginLeft: 6, padding: '1px 6px', borderRadius: 999, fontSize: 10, fontWeight: 600,
+              background: 'var(--accent-light)', color: 'var(--accent)', whiteSpace: 'nowrap',
+            }}>+{hidden}</span>
+          )}
+        </span>
+      );
+    } },
     { key: 'location', label: 'Ort', render: (v, row) => {
       const city = v ? v.replace(/^\d{5}\s+(\S+).*/, '$1') : null;
       return (

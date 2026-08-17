@@ -30,6 +30,9 @@ public class CandidateDocument {
     @Column(nullable = false)
     private String category;
 
+    @Column(name = "extraction_status", nullable = false)
+    private String extractionStatus = "NONE";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -60,6 +63,9 @@ public class CandidateDocument {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getExtractionStatus() { return extractionStatus; }
+    public void setExtractionStatus(String extractionStatus) { this.extractionStatus = extractionStatus; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

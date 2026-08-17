@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import ALLOWED_ORIGINS, GENERATED_DIR
 from app.routes.health import router as health_router
 from app.routes.pdf import router as pdf_router
+from app.routes.extract import router as extract_router
+from app.routes.profile_pdf import router as profile_pdf_router
 
 logging.basicConfig(level=logging.INFO)
 os.makedirs(GENERATED_DIR, exist_ok=True)
@@ -26,3 +28,5 @@ app.mount("/generated", StaticFiles(directory=GENERATED_DIR), name="generated")
 
 app.include_router(health_router)
 app.include_router(pdf_router)
+app.include_router(extract_router)
+app.include_router(profile_pdf_router)

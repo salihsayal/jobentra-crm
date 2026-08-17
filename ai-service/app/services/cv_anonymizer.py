@@ -1,62 +1,17 @@
 import logging
 import os
 import re
-import tempfile
 
-from pypdf import PdfReader
 from fastapi import UploadFile
 
-from app.config import GENERATED_DIR, DOCUMENTS_DIR
+from app.config import DOCUMENTS_DIR
+from app.services.cv_extractor import extract_text as _extract_text_bytes
 
 log = logging.getLogger(__name__)
 
 
-def _ocr_from_pdf(file: UploadFile) -> str:
-    try:
-        from pdf2image import convert_from_bytes
-        import pytesseract
-    except ImportError as e:
-        raise ValueError(f"OCR dependencies not available: {e}")
-
-    file.file.seek(0)
-    pdf_bytes = file.file.read()
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        images = convert_from_bytes(pdf_bytes, dpi=300, fmt="jpeg", output_folder=tmpdir)
-        texts = []
-        for img in images:
-            ocr_text = pytesseract.image_to_string(img, lang="deu")
-            if ocr_text and ocr_text.strip():
-                texts.append(ocr_text.strip())
-        return "\n".join(texts)
-
-
 def extract_text(file: UploadFile, filename: str) -> str:
-    lower = filename.lower()
-    if lower.endswith('.pdf'):
-        file.file.seek(0)
-        reader = PdfReader(file.file)
-        text_parts = []
-        for page in reader.pages:
-            extracted = page.extract_text()
-            if extracted:
-                text_parts.append(extracted)
-        text = '\n'.join(text_parts).strip()
-        if text:
-            return text
-
-        log.info("pypdf returned no text for %s, falling back to OCR", filename)
-        ocr_text = _ocr_from_pdf(file)
-        if ocr_text.strip():
-            return ocr_text
-
-        raise ValueError("No extractable text found in the uploaded file (tried pypdf and OCR).")
-    elif lower.endswith('.txt'):
-        file.file.seek(0)
-        content = file.file.read()
-        return content.decode('utf-8', errors='replace')
-    else:
-        raise ValueError(f"Unsupported file type: {filename}. Only PDF and TXT are supported.")
+    return _extract_text_bytes(file.file.read(), filename)
 
 
 def anonymize_text(raw_text: str) -> str:

@@ -5,6 +5,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +19,13 @@ import java.util.List;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
+
+    private static final long RENEWAL_GRACE_MS = 5 * 60_000L;
+
+    private static final String SESSION_ENDPOINT = "/api/auth/session";
+    private static final String RENEW_ENDPOINT = "/api/auth/renew";
 
     private final JwtUtil jwtUtil;
 
@@ -43,9 +53,28 @@ public class JwtFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(email, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
+
+            renewTokenIfNeeded(request, response, token, email, role);
         }
 
         chain.doFilter(request, response);
+    }
+
+    private void renewTokenIfNeeded(HttpServletRequest request, HttpServletResponse response,
+                                    String token, String email, String role) {
+        if (SESSION_ENDPOINT.equals(request.getRequestURI())
+                || RENEW_ENDPOINT.equals(request.getRequestURI())) {
+            return;
+        }
+        long grace = Math.min(RENEWAL_GRACE_MS, jwtUtil.getExpirationMs() / 3);
+        if (token != null && jwtUtil.getRemainingMs(token) > jwtUtil.getExpirationMs() - grace) {
+            return;
+        }
+        String freshToken = jwtUtil.generateToken(email, role);
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.buildAuthCookie(freshToken).toString());
+        if (log.isDebugEnabled()) {
+            log.debug("Renewed JWT for {} on {}", email, request.getRequestURI());
+        }
     }
 
     private String extractFromCookie(HttpServletRequest request) {

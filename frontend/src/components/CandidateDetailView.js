@@ -1,10 +1,13 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
-  ArrowLeft, FileText, ShieldOff, Check, Undo2, MapPin, Calendar,
+  ArrowLeft, FileText, Check, Undo2, MapPin, Calendar,
   User, Mail, Phone, Briefcase, GraduationCap, FolderOpen, Clock,
-  MessageSquare, Award, Upload, Download, Trash2, Plus, X
+  MessageSquare, Award, Upload, Download, Trash2, Plus, X, Pencil
 } from 'lucide-react';
 import { api } from '@/utils/api';
+import { showToast } from '@/components/Toast';
+import { parseAddress, sortWorkExperience } from '@/utils/format';
+import CandidateProfileModal from './CandidateProfileModal';
 
 const STATUS_COLORS = {
   NEW: { bg: 'rgba(129,140,248,0.12)', text: '#818cf8' },
@@ -34,14 +37,22 @@ const INPUT_STYLE = {
   outline: 'none', cursor: 'text', transition: 'background 0.15s ease, border-color 0.15s ease',
 };
 
+const WE_INPUT_STYLE = {
+  background: 'var(--bg-card)', border: '1px solid var(--border)',
+  color: 'var(--text-main)', fontSize: 12, padding: '6px 10px', borderRadius: 6,
+  outline: 'none', minWidth: 0,
+};
+
 const FIELD_LABELS = {
   firstName: 'Vorname', lastName: 'Nachname', email: 'Email', phone: 'Telefon',
   skills: 'F\u00E4higkeiten', job: 'Position', location: 'Ort',
+  plz: 'PLZ', city: 'Ort', street: 'Stra\u00DFe', streetNumber: 'Nr.',
   mobility: 'Mobilit\u00E4t', availability: 'Verf\u00FCgbarkeit', status: 'Status',
 };
 
 const STATUS_OPTIONS = ['NEW', 'IN_PROCESS', 'PLACED', 'REJECTED'];
-const EDITABLE_KEYS = ['firstName', 'lastName', 'email', 'phone', 'skills', 'job', 'location', 'mobility', 'availability', 'status'];
+const EDITABLE_KEYS = ['firstName', 'lastName', 'email', 'phone', 'skills', 'job', 'location', 'plz', 'city', 'street', 'streetNumber', 'mobility', 'availability', 'status'];
+const INFO_GRID_KEYS = ['firstName', 'lastName', 'email', 'phone', 'availability', 'mobility', 'job', 'status', 'plz', 'street', 'city', 'streetNumber'];
 
 const TABS = [
   { key: 'info', label: 'Info' },
@@ -81,13 +92,21 @@ function parseField(key, value) {
 
 function detectCategory(filename) {
   const lower = (filename || '').toLowerCase();
-  if (lower.includes('censored') || lower.includes('anonym')) return 'CENSORED';
   if (lower.includes('lebenslauf') || lower.includes('cv') || lower.includes('resume')) return 'CV';
   if (lower.includes('zertifikat') || lower.includes('zeugnis') || lower.includes('certificate')) return 'CERTIFICATE';
   return 'OTHER';
 }
 
-export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) {
+function getPreviewKind(doc) {
+  const mime = String(doc.mimeType || '').toLowerCase();
+  const name = String(doc.originalFilename || doc.filename || '').toLowerCase();
+  if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp)$/.test(name)) return 'image';
+  if (mime.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+  if (mime.startsWith('text/') || /\.(txt|md|csv|log|json)$/.test(name)) return 'text';
+  return 'other';
+}
+
+export default function CandidateDetailView({ entity, onBack, onEntityUpdate, onDataRefresh }) {
   const originalData = useRef({ ...entity });
   const [formData, setFormData] = useState({ ...entity });
   const [focusedField, setFocusedField] = useState(null);
@@ -114,6 +133,22 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
   const geoCachedRef = useRef({});
   const [newSkill, setNewSkill] = useState('');
 
+  const [workExperiences, setWorkExperiences] = useState([]);
+  const [weLoading, setWeLoading] = useState(false);
+  const [showWeForm, setShowWeForm] = useState(false);
+  const [weForm, setWeForm] = useState({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+  const [editingWeId, setEditingWeId] = useState(null);
+  const [editingWeForm, setEditingWeForm] = useState({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+  const [savingWe, setSavingWe] = useState(false);
+
+  const [hoverPreview, setHoverPreview] = useState(null);
+  const [hoverTexts, setHoverTexts] = useState({});
+  const hoverTimerRef = useRef(null);
+  const [viewerDoc, setViewerDoc] = useState(null);
+  const [viewerText, setViewerText] = useState(null);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
   const candidateId = entity.id;
 
   const fetchDocuments = useCallback(async () => {
@@ -138,8 +173,31 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
     setTimelineLoading(false);
   }, [candidateId]);
 
-  useEffect(() => { setFormData({ ...entity }); originalData.current = { ...entity }; }, [entity]);
-  useEffect(() => { fetchDocuments(); fetchTimeline(); }, [fetchDocuments, fetchTimeline]);
+  const fetchWorkExperience = useCallback(async () => {
+    setWeLoading(true);
+    try {
+      const entries = await api.candidates.workExperience.list(candidateId);
+      setWorkExperiences(Array.isArray(entries) ? entries : []);
+    } catch (e) {
+      console.error('Failed to fetch work experience:', e);
+    }
+    setWeLoading(false);
+  }, [candidateId]);
+
+  useEffect(() => {
+    const initial = { ...entity };
+    const hasStructured = ['plz', 'city', 'street', 'streetNumber'].some(k => initial[k] != null && initial[k] !== '');
+    if (!hasStructured && initial.location) {
+      const parsed = parseAddress(initial.location);
+      initial.plz = parsed.plz;
+      initial.city = parsed.city;
+      initial.street = parsed.street;
+      initial.streetNumber = parsed.streetNumber;
+    }
+    setFormData(initial);
+    originalData.current = initial;
+  }, [entity]);
+  useEffect(() => { fetchDocuments(); fetchTimeline(); fetchWorkExperience(); }, [fetchDocuments, fetchTimeline, fetchWorkExperience]);
 
   useEffect(() => {
     const address = entity.location;
@@ -170,10 +228,107 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
 
   async function handleUpload(file, category) {
     try {
-      await api.candidates.documents.upload(candidateId, file, category);
+      const savedDoc = await api.candidates.documents.upload(candidateId, file, category);
       fetchDocuments();
+      if (category === 'CV' && savedDoc && savedDoc.id) {
+        pollExtractionStatus(savedDoc.id);
+      }
     } catch (e) {
       console.error('Upload failed:', e);
+      showToast('Upload fehlgeschlagen: ' + e.message);
+    }
+  }
+
+  async function pollExtractionStatus(documentId) {
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(r => setTimeout(r, 2500));
+      try {
+        const docs = await api.candidates.documents.list(candidateId);
+        const docsList = Array.isArray(docs) ? docs : [];
+        const doc = docsList.find(d => d.id === documentId);
+        if (doc && doc.extractionStatus === 'DONE') {
+          showToast('CV ausgewertet – Fähigkeiten und Arbeitserfahrung aktualisiert.', 'success');
+          await refreshCandidateAfterExtraction();
+          return;
+        }
+        if (doc && doc.extractionStatus === 'FAILED') {
+          showToast('CV-Analyse fehlgeschlagen. Bitte Daten manuell pflegen.');
+          return;
+        }
+      } catch (e) {
+        console.error('Extraction polling failed:', e);
+      }
+    }
+    showToast('CV-Analyse dauert länger als erwartet. Ergebnisse erscheinen sobald verfügbar.');
+  }
+
+  async function refreshCandidateAfterExtraction() {
+    try {
+      const fresh = await api.candidates.get(candidateId);
+      Object.keys(fresh).forEach(k => { if (k in entity) entity[k] = fresh[k]; });
+      originalData.current = { ...entity };
+      setFormData({ ...entity });
+      fetchWorkExperience();
+      if (onDataRefresh) onDataRefresh();
+    } catch (e) {
+      console.error('Failed to refresh candidate after extraction:', e);
+    }
+  }
+
+  function openWeForm() {
+    setWeForm({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+    setShowWeForm(true);
+  }
+
+  async function handleCreateWorkExperience() {
+    if (!weForm.jobTitle.trim()) return;
+    setSavingWe(true);
+    try {
+      await api.candidates.workExperience.create(candidateId, weForm);
+      setWeForm({ jobTitle: '', company: '', startDate: '', endDate: '', description: '' });
+      setShowWeForm(false);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to create work experience:', e);
+      showToast('Speichern fehlgeschlagen: ' + e.message);
+    }
+    setSavingWe(false);
+  }
+
+  function startEditingWe(entry) {
+    setEditingWeId(entry.id);
+    setEditingWeForm({
+      jobTitle: entry.jobTitle || '',
+      company: entry.company || '',
+      startDate: entry.startDate || '',
+      endDate: entry.endDate || '',
+      description: entry.description || '',
+    });
+  }
+
+  async function handleUpdateWorkExperience() {
+    if (!editingWeForm.jobTitle.trim()) return;
+    setSavingWe(true);
+    try {
+      await api.candidates.workExperience.update(candidateId, editingWeId, editingWeForm);
+      setEditingWeId(null);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to update work experience:', e);
+      showToast('Speichern fehlgeschlagen: ' + e.message);
+    }
+    setSavingWe(false);
+  }
+
+  async function handleDeleteWorkExperience(entryId) {
+    try {
+      await api.candidates.workExperience.delete(candidateId, entryId);
+      if (editingWeId === entryId) setEditingWeId(null);
+      fetchWorkExperience();
+    } catch (e) {
+      console.error('Failed to delete work experience:', e);
+      showToast('Löschen fehlgeschlagen: ' + e.message);
     }
   }
 
@@ -185,6 +340,55 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
       console.error('Delete failed:', e);
     }
   }
+
+  function handleDocHoverStart(e, doc) {
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      const x = Math.min(e.clientX + 16, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 340);
+      const y = Math.min(e.clientY + 16, (typeof window !== 'undefined' ? window.innerHeight : 800) - 430);
+      setHoverPreview({ doc, x: Math.max(8, x), y: Math.max(8, y) });
+      if (getPreviewKind(doc) === 'text' && !hoverTexts[doc.id]) {
+        fetch(api.candidates.documents.downloadUrl(candidateId, doc.id), { credentials: 'include' })
+          .then(r => r.text())
+          .then(t => setHoverTexts(prev => ({ ...prev, [doc.id]: t })))
+          .catch(() => {});
+      }
+    }, 200);
+  }
+
+  function handleDocHoverEnd() {
+    clearTimeout(hoverTimerRef.current);
+    setHoverPreview(null);
+  }
+
+  function handleOpenViewer(doc) {
+    setHoverPreview(null);
+    setViewerDoc(doc);
+    setViewerText(null);
+    setViewerLoading(false);
+    if (getPreviewKind(doc) === 'text') {
+      setViewerLoading(true);
+      fetch(api.candidates.documents.downloadUrl(candidateId, doc.id), { credentials: 'include' })
+        .then(r => r.text())
+        .then(t => { setViewerText(t); setViewerLoading(false); })
+        .catch(() => { setViewerText('Vorschau nicht verfügbar.'); setViewerLoading(false); });
+    }
+  }
+
+  function closeViewer() {
+    setViewerDoc(null);
+    setViewerText(null);
+    setViewerLoading(false);
+  }
+
+  useEffect(() => {
+    if (!viewerDoc) return;
+    function handleKey(e) {
+      if (e.key === 'Escape') closeViewer();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [viewerDoc]);
 
   async function handleCreateTimelineEvent() {
     if (!newEvent.title.trim()) return;
@@ -242,6 +446,16 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
     if (Object.values(validationErrors).some(Boolean)) return;
     const body = {};
     EDITABLE_KEYS.forEach(k => { body[k] = parseField(k, formData[k]); });
+    const plz = String(formData.plz || '').trim();
+    const city = String(formData.city || '').trim();
+    const street = String(formData.street || '').trim();
+    const streetNumber = String(formData.streetNumber || '').trim();
+    const combined = [plz, city, street, streetNumber].filter(Boolean).join(' ');
+    body.plz = plz;
+    body.city = city;
+    body.street = street;
+    body.streetNumber = streetNumber;
+    body.location = combined || String(entity.location || '');
     if (onEntityUpdate) {
       try {
         const updated = await onEntityUpdate('candidate', entity.id, body);
@@ -334,14 +548,12 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
-                <FileText size={15} /> Lebenslauf-Generator
-              </button>
-              <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold border border-app-accent text-app-accent hover:bg-app-accent hover:text-white transition-colors">
-                <ShieldOff size={15} /> CV-Anonymisierer
-              </button>
-            </div>
+            <button
+              onClick={() => setShowProfile(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+            >
+              <FileText size={15} /> Kandidaten-Profil
+            </button>
             <div style={{
               display: 'flex', gap: 8,
               opacity: isDirty ? 1 : 0,
@@ -387,7 +599,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
               Pers&ouml;nliche Daten
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-              {['firstName', 'lastName', 'email', 'phone', 'availability', 'mobility', 'job', 'status'].map(key => {
+              {INFO_GRID_KEYS.map(key => {
                 const value = formData[key];
                 const display = formatField(key, value);
                 const err = validationErrors[key];
@@ -577,6 +789,150 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             )}
           </div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Briefcase size={16} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Arbeitserfahrung
+                </span>
+              </div>
+              {!showWeForm && (
+                <button
+                  onClick={openWeForm}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                >
+                  <Plus size={13} /> Hinzufügen
+                </button>
+              )}
+            </div>
+
+            {showWeForm && (
+              <div style={{ marginBottom: 16, padding: 14, background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <input type="text" placeholder="Position / Jobtitel" value={weForm.jobTitle}
+                    onChange={e => setWeForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Unternehmen" value={weForm.company}
+                    onChange={e => setWeForm(prev => ({ ...prev, company: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Start (z.B. 03.2020)" value={weForm.startDate}
+                    onChange={e => setWeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                  <input type="text" placeholder="Ende (z.B. heute)" value={weForm.endDate}
+                    onChange={e => setWeForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    style={WE_INPUT_STYLE} />
+                </div>
+                <textarea placeholder="Aufgaben & Verantwortlichkeiten" value={weForm.description}
+                  onChange={e => setWeForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  style={{ ...WE_INPUT_STYLE, width: '100%', resize: 'vertical', marginBottom: 8 }} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                  <button onClick={() => setShowWeForm(false)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors">
+                    Abbrechen
+                  </button>
+                  <button onClick={handleCreateWorkExperience} disabled={savingWe || !weForm.jobTitle.trim()}
+                    style={{ opacity: savingWe || !weForm.jobTitle.trim() ? 0.5 : 1 }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+                    <Check size={13} /> Speichern
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {weLoading ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Lade Arbeitserfahrung...</div>
+            ) : workExperiences.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                <Briefcase size={32} style={{ margin: '0 auto 12', opacity: 0.3 }} />
+                <div>Keine Arbeitserfahrung hinterlegt.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Lade einen CV im Vault-Tab hoch, um diese automatisch auszufüllen.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {sortWorkExperience(workExperiences).map((entry, i) => (
+                  <div key={entry.id || i} style={{
+                    background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px',
+                    border: editingWeId === entry.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  }}>
+                    {editingWeId === entry.id ? (
+                      <div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                          <input type="text" placeholder="Position / Jobtitel" value={editingWeForm.jobTitle}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Unternehmen" value={editingWeForm.company}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, company: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Start" value={editingWeForm.startDate}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                          <input type="text" placeholder="Ende" value={editingWeForm.endDate}
+                            onChange={e => setEditingWeForm(prev => ({ ...prev, endDate: e.target.value }))}
+                            style={WE_INPUT_STYLE} />
+                        </div>
+                        <textarea placeholder="Aufgaben & Verantwortlichkeiten" value={editingWeForm.description}
+                          onChange={e => setEditingWeForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={3}
+                          style={{ ...WE_INPUT_STYLE, width: '100%', resize: 'vertical', marginBottom: 8 }} />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <button onClick={() => setEditingWeId(null)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-app-border text-app-text-muted hover:text-app-text-main hover:bg-app-bg-hover transition-colors">
+                            Abbrechen
+                          </button>
+                          <button onClick={handleUpdateWorkExperience} disabled={savingWe || !editingWeForm.jobTitle.trim()}
+                            style={{ opacity: savingWe || !editingWeForm.jobTitle.trim() ? 0.5 : 1 }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors">
+                            <Check size={13} /> Speichern
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)' }}>
+                              {entry.jobTitle || '-'}
+                              {entry.company && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> &middot; {entry.company}</span>}
+                            </div>
+                            {(entry.startDate || entry.endDate) && (
+                              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                                {entry.startDate || '?'} – {entry.endDate || 'heute'}
+                              </div>
+                            )}
+                            {entry.description && (
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                                {entry.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                            <button
+                              onClick={() => startEditingWe(entry)}
+                              style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                              className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
+                              title="Bearbeiten"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteWorkExperience(entry.id)}
+                              style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                              className="hover:text-app-danger hover:bg-app-bg-hover transition-colors"
+                              title="L\u00f6schen"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <FileText size={16} style={{ color: 'var(--accent)' }} />
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -628,8 +984,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
           </div>
         </div>
       )}
-
-      {/* Vault Tab */}
       {activeTab === 'vault' && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -671,7 +1025,6 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                   }}>
                   <option value="CV" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CV (Lebenslauf)</option>
                   <option value="CERTIFICATE" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CERTIFICATE (Zertifikat / Zeugnis)</option>
-                  <option value="CENSORED" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>CENSORED (Anonymisiert)</option>
                   <option value="OTHER" style={{ background: 'var(--bg-card)', color: 'var(--text-main)' }}>OTHER (Sonstiges)</option>
                 </select>
               </div>
@@ -706,7 +1059,13 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                 <div key={doc.id || i} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 14px', borderBottom: i < documents.length - 1 ? '1px solid var(--border)' : 'none',
-                }}>
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                  className="hover:bg-app-bg-hover"
+                  onMouseEnter={(e) => handleDocHoverStart(e, doc)}
+                  onMouseLeave={handleDocHoverEnd}
+                  onClick={() => handleOpenViewer(doc)}
+                >
                   <div style={{
                     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
                     background: 'var(--accent-light)', display: 'flex',
@@ -732,6 +1091,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                   <a
                     href={api.candidates.documents.downloadUrl(candidateId, doc.id)}
                     download={doc.originalFilename}
+                    onClick={(e) => e.stopPropagation()}
                     style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
                     className="hover:text-app-accent hover:bg-app-bg-hover transition-colors"
                     title="Herunterladen"
@@ -739,7 +1099,7 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
                     <Download size={14} />
                   </a>
                   <button
-                    onClick={() => handleDeleteDocument(doc.id)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc.id); }}
                     style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
                     className="hover:text-app-danger hover:bg-app-bg-hover transition-colors"
                     title="L\u00f6schen"
@@ -851,6 +1211,191 @@ export default function CandidateDetailView({ entity, onBack, onEntityUpdate }) 
             </div>
           )}
         </div>
+      )}
+
+      {/* Hover Preview */}
+      {hoverPreview && (
+        <div style={{
+          position: 'fixed', left: hoverPreview.x, top: hoverPreview.y, zIndex: 90,
+          width: 320, background: 'var(--bg-card)', border: '1px solid var(--card-border)',
+          borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', overflow: 'hidden',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            padding: '8px 12px', borderBottom: '1px solid var(--border)',
+            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {hoverPreview.doc.originalFilename || hoverPreview.doc.filename}
+          </div>
+          <div style={{
+            height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--bg-input)', overflow: 'hidden',
+          }}>
+            {getPreviewKind(hoverPreview.doc) === 'pdf' && (
+              <iframe
+                src={api.candidates.documents.previewUrl(candidateId, hoverPreview.doc.id)}
+                title="Vorschau"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'image' && (
+              <img
+                src={api.candidates.documents.previewUrl(candidateId, hoverPreview.doc.id)}
+                alt="Vorschau"
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'text' && (
+              <pre style={{
+                width: '100%', height: '100%', margin: 0, padding: 12,
+                fontSize: 10, lineHeight: 1.5, color: 'var(--text-main)',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflow: 'hidden',
+              }}>
+                {hoverTexts[hoverPreview.doc.id] != null
+                  ? hoverTexts[hoverPreview.doc.id].split('\n').slice(0, 20).join('\n')
+                  : 'Lädt Textvorschau...'}
+              </pre>
+            )}
+            {getPreviewKind(hoverPreview.doc) === 'other' && (
+              <div style={{ textAlign: 'center', padding: 16 }}>
+                <FileText size={32} style={{ color: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 8' }} />
+                <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Keine Vorschau verfügbar</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                  Klicken zum Öffnen
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {viewerDoc && (
+        <div
+          onClick={closeViewer}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--card-border)',
+              width: '100%', maxWidth: 960, height: '85vh',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <FileText size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 13, fontWeight: 700, color: 'var(--text-main)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {viewerDoc.originalFilename || viewerDoc.filename}
+                </span>
+                {viewerDoc.category && (
+                  <span style={{
+                    padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                    background: viewerDoc.category === 'CENSORED' ? 'rgba(5, 150, 105, 0.12)' : 'var(--accent-light)',
+                    color: viewerDoc.category === 'CENSORED' ? 'var(--success)' : 'var(--accent)',
+                    flexShrink: 0,
+                  }}>{viewerDoc.category}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <a
+                  href={api.candidates.documents.downloadUrl(candidateId, viewerDoc.id)}
+                  download={viewerDoc.originalFilename}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                >
+                  <Download size={13} /> Download
+                </a>
+                <button
+                  onClick={closeViewer}
+                  style={{ color: 'var(--text-dim)', padding: 6, borderRadius: 6 }}
+                  className="hover:text-app-text-main hover:bg-app-bg-hover transition-colors"
+                  title="Schließen"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div style={{
+              flex: 1, overflow: 'hidden', background: 'var(--bg-input)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {getPreviewKind(viewerDoc) === 'pdf' && (
+                <iframe
+                  src={api.candidates.documents.previewUrl(candidateId, viewerDoc.id)}
+                  title="Dokument"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              )}
+              {getPreviewKind(viewerDoc) === 'image' && (
+                <img
+                  src={api.candidates.documents.previewUrl(candidateId, viewerDoc.id)}
+                  alt={viewerDoc.originalFilename}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              )}
+              {getPreviewKind(viewerDoc) === 'text' && (
+                <div style={{
+                  width: '100%', height: '100%', overflow: 'auto', padding: 20,
+                  display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+                }}>
+                  {viewerLoading ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, paddingTop: 40 }}>
+                      Lade Text...
+                    </div>
+                  ) : (
+                    <pre style={{
+                      margin: 0, fontSize: 12, lineHeight: 1.6, color: 'var(--text-main)',
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
+                    }}>
+                      {viewerText}
+                    </pre>
+                  )}
+                </div>
+              )}
+              {getPreviewKind(viewerDoc) === 'other' && (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <FileText size={48} style={{ color: 'var(--text-dim)', opacity: 0.4, margin: '0 auto 12' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>
+                    Keine Vorschau verfügbar
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
+                    Dieses Dateiformat kann nicht direkt angezeigt werden.
+                  </div>
+                  <a
+                    href={api.candidates.documents.downloadUrl(candidateId, viewerDoc.id)}
+                    download={viewerDoc.originalFilename}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                    style={{ marginTop: 16 }}
+                  >
+                    <Download size={14} /> Herunterladen
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Profile Modal */}
+      {showProfile && (
+        <CandidateProfileModal
+          candidate={entity}
+          workExperiences={sortWorkExperience(workExperiences)}
+          certificates={documents.filter(d => d.category === 'CERTIFICATE')}
+          onClose={() => setShowProfile(false)}
+        />
       )}
     </div>
   );

@@ -66,6 +66,38 @@ spec:
               key: AI_API_KEY
         - name: ALLOWED_ORIGINS
           value: "http://backend:8080,http://localhost:8080"
+        # --- NEUE GCP / GEMINI VARIABLEN ---
+        - name: GCP_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: GCP_PROJECT_ID
+        - name: GCP_LOCATION
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: GCP_LOCATION
+        - name: LLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: LLM_MODEL
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/app/secrets/crm-gemini-runner.json"
+        
+        # --- SECRET MOUNT FÜR GCP JSON ---
+        volumeMounts:
+        - name: google-cloud-key
+          mountPath: /app/secrets
+          readOnly: true
+      
+      volumes:
+      - name: google-cloud-key
+        secret:
+          secretName: crm-secrets
+          items:
+          - key: GCP_CREDENTIALS_JSON
+            path: crm-gemini-runner.json
 ---
 apiVersion: v1
 kind: Service
@@ -131,6 +163,12 @@ spec:
               key: AI_API_KEY
         - name: CANDIDATE_FILES_PATH
           value: "/data/candidates"
+        # --- NEUE SESSION VARIABLE ---
+        - name: SESSION_IDLE_MINUTES
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: SESSION_IDLE_MINUTES
         volumeMounts:
         - name: documents-volume
           mountPath: /data/candidates
@@ -185,6 +223,12 @@ spec:
             secretKeyRef:
               name: crm-secrets
               key: ALLOWED_DEV_ORIGINS
+        # --- NEUE SESSION VARIABLE ---
+        - name: SESSION_IDLE_MINUTES
+          valueFrom:
+            secretKeyRef:
+              name: crm-secrets
+              key: SESSION_IDLE_MINUTES
 ---
 apiVersion: v1
 kind: Service
