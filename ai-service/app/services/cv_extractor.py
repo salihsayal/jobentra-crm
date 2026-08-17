@@ -5,10 +5,11 @@ import re
 import tempfile
 
 from fastapi import UploadFile
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from pypdf import PdfReader
 
-from app.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
+from app.config import GCP_LOCATION, GCP_PROJECT_ID, LLM_MODEL
 from app.models import ExtractionResult
 
 log = logging.getLogger(__name__)
@@ -90,34 +91,52 @@ def _parse_llm_json(raw: str) -> ExtractionResult:
 
 
 def llm_extract(text: str) -> ExtractionResult:
-    if not LLM_API_KEY:
-        raise ValueError("LLM_API_KEY is not configured")
+    if not GCP_PROJECT_ID:
+        raise ValueError("GCP_PROJECT_ID is not configured")
 
-    client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL, timeout=60)
+    client = genai.Client(
+        vertexai=True,
+        project=GCP_PROJECT_ID,
+        location=GCP_LOCATION,
+        http_options={"timeout": 120_000},
+    )
 
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": text[:60000]},
+    config = types.GenerateContentConfig(
+        system_instruction=_SYSTEM_PROMPT,
+        temperature=0,
+        response_mime_type="application/json",
+    )
+
+    contents = [
+        types.Content(role="user", parts=[types.Part.from_text(text=text[:60000])]),
     ]
 
     last_error = None
+    raw = ""
     for attempt in range(2):
         try:
-            response = client.chat.completions.create(
+            response = client.models.generate_content(
                 model=LLM_MODEL,
-                messages=messages,
-                temperature=0,
-                response_format={"type": "json_object"},
+                contents=contents,
+                config=config,
             )
-            raw = response.choices[0].message.content or ""
+            raw = response.text or ""
             return _parse_llm_json(raw)
         except ValueError as e:
             last_error = e
-            messages.append({"role": "assistant", "content": "I will respond with valid JSON only."})
-            messages.append({
-                "role": "user",
-                "content": "Your previous answer was not valid JSON. Respond with ONLY the JSON object.",
-            })
+            contents.append(
+                types.Content(role="model", parts=[types.Part.from_text(raw)])
+            )
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(
+                            "Your previous answer was not valid JSON. Respond with ONLY the JSON object."
+                        )
+                    ],
+                )
+            )
         except Exception as e:
             last_error = e
             log.warning("LLM call failed (attempt %d): %s", attempt + 1, e)

@@ -6,6 +6,8 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://backend:8080,http://local
 GENERATED_DIR = "/app/generated"
 DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "/app/documents")
 
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "jobentra-crm-505722")
+GCP_LOCATION = os.getenv("GCP_LOCATION", "europe-west3")

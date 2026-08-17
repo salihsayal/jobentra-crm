@@ -50,3 +50,4 @@ appdata/
 # Python cache
 __pycache__/
 *.pyc
+secrets/
