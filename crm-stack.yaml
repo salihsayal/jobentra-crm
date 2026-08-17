@@ -55,7 +55,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: ai-service
-        image: git.ad.jobentra.de/salih/crm-ai-service:b84475b
+        image: git.ad.jobentra.de/salih/crm-ai-service:92b92f9
         ports:
         - containerPort: 8000
         env:
@@ -84,13 +84,13 @@ spec:
               key: LLM_MODEL
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: "/app/secrets/crm-gemini-runner.json"
-        
+
         # --- SECRET MOUNT FÜR GCP JSON ---
         volumeMounts:
         - name: google-cloud-key
           mountPath: /app/secrets
           readOnly: true
-      
+
       volumes:
       - name: google-cloud-key
         secret:
@@ -134,7 +134,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: backend
-        image: git.ad.jobentra.de/salih/crm-backend:b84475b
+        image: git.ad.jobentra.de/salih/crm-backend:92b92f9
         ports:
         - containerPort: 8080
         env:
@@ -212,7 +212,7 @@ spec:
       - name: gitea-registry-secret
       containers:
       - name: frontend
-        image: git.ad.jobentra.de/salih/crm-frontend:b84475b
+        image: git.ad.jobentra.de/salih/crm-frontend:92b92f9
         ports:
         - containerPort: 3000
         env:
